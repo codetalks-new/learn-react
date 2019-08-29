@@ -48,6 +48,16 @@
 
 最后可以安装 VS Code 的 [Jest 插件](https://github.com/orta/vscode-jest)
 
+### Debug 测试
+参考 [Debugging Tests](https://create-react-app.dev/docs/debugging-tests)
+
+1. 在 Chrome 中测试 
+   - `yarn test:debug`
+   - 打开 Chrome 输入 `about:inspect` 选择调试页面进程.
+
+2. 在 VS Code 中测试
+  执行 已经配置的 Debug CRA Tests 启动项即可. (先按 <C+Shift+D>)
+
 ## 各分支对应 Demo 索引
 
 1. [demo-try](https://github.com/banxi1988/learn-react/tree/demo-try)
