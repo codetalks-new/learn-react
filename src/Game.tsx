@@ -2,15 +2,19 @@ import { Component } from "react";
 import React from "react";
 import "./Game.css";
 
-class Square extends Component {
+interface SquareProps {
+  value: number;
+}
+
+class Square extends Component<SquareProps> {
   render() {
-    return <button className="square">{/*TODO*/}</button>;
+    return <button className="square">{this.props.value}</button>;
   }
 }
 
 class Board extends Component {
   renderSquare(i: number) {
-    return <Square />;
+    return <Square value={i} />;
   }
   render() {
     const status = "下一个玩家 : X";
