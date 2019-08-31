@@ -2,33 +2,44 @@ import { Component } from "react";
 import React from "react";
 import "./Game.css";
 
+type SquareValueType = null | "X" | "O";
 interface SquareProps {
-  value: number;
+  value: SquareValueType;
+  onClick: () => void;
 }
 
 interface SquareState {
-  value: "X" | null;
+  value: SquareValueType;
 }
 
 class Square extends Component<SquareProps> {
   readonly state: SquareState = {
     value: null
   };
-  onClick = () => {
-    this.setState({ value: "X" });
-  };
   render() {
     return (
-      <button className="square" onClick={this.onClick}>
-        {this.state.value}
+      <button className="square" onClick={this.props.onClick}>
+        {this.props.value}
       </button>
     );
   }
 }
 
+interface BoardState {
+  squares: SquareValueType[];
+}
+
 class Board extends Component {
+  readonly state: BoardState = {
+    squares: Array(9).fill(null)
+  };
+  handleClick = (i: number) => {
+    const squares = this.state.squares.slice(); // 复制
+    squares[i] = "X";
+    this.setState({ squares: squares });
+  };
   renderSquare(i: number) {
-    return <Square value={i} />;
+    return <Square value={this.state.squares[i]} onClick={() => this.handleClick(i)} />;
   }
   render() {
     const status = "下一个玩家 : X";
