@@ -18,22 +18,25 @@ const Square = (props: SquareProps) => {
 
 interface BoardState {
   squares: SquareValueType[];
+  xIsNext: boolean;
 }
 
 class Board extends Component {
   readonly state: BoardState = {
-    squares: Array(9).fill(null)
+    squares: Array(9).fill(null),
+    xIsNext: true
   };
   handleClick = (i: number) => {
     const squares = this.state.squares.slice(); // 复制
-    squares[i] = "X";
-    this.setState({ squares: squares });
+    squares[i] = this.state.xIsNext ? "X" : "O";
+    this.setState({ squares: squares, xIsNext: !this.state.xIsNext });
   };
   renderSquare(i: number) {
     return <Square value={this.state.squares[i]} onClick={() => this.handleClick(i)} />;
   }
   render() {
-    const status = "下一个玩家 : X";
+    const nextPlayer = this.state.xIsNext ? "X" : "O";
+    const status = `下一个玩家 : ${nextPlayer}`;
     return (
       <div>
         <div className="status">{status}</div>
