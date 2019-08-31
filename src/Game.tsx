@@ -8,22 +8,13 @@ interface SquareProps {
   onClick: () => void;
 }
 
-interface SquareState {
-  value: SquareValueType;
-}
-
-class Square extends Component<SquareProps> {
-  readonly state: SquareState = {
-    value: null
-  };
-  render() {
-    return (
-      <button className="square" onClick={this.props.onClick}>
-        {this.props.value}
-      </button>
-    );
-  }
-}
+const Square = (props: SquareProps) => {
+  return (
+    <button className="square" onClick={props.onClick}>
+      {props.value}
+    </button>
+  );
+};
 
 interface BoardState {
   squares: SquareValueType[];
