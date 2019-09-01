@@ -16,6 +16,17 @@ const Square = (props: SquareProps) => {
   );
 };
 
+const calcWinner = (squares: SquareValueType[]): SquareValueType => {
+  const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  for (const line of lines) {
+    const [a, b, c] = line;
+    if (squares[a] && squares[a] === squares[b] && squares[b] === squares[c]) {
+      return squares[a];
+    }
+  }
+  return null;
+};
+
 interface BoardState {
   squares: SquareValueType[];
   xIsNext: boolean;
@@ -35,8 +46,14 @@ class Board extends Component {
     return <Square value={this.state.squares[i]} onClick={() => this.handleClick(i)} />;
   }
   render() {
-    const nextPlayer = this.state.xIsNext ? "X" : "O";
-    const status = `下一个玩家 : ${nextPlayer}`;
+    const winner = calcWinner(this.state.squares);
+    let status;
+    if (winner) {
+      status = `赢家: ${winner}`;
+    } else {
+      const nextPlayer = this.state.xIsNext ? "X" : "O";
+      status = `下一个玩家 : ${nextPlayer}`;
+    }
     return (
       <div>
         <div className="status">{status}</div>
