@@ -1,4 +1,4 @@
-import React, { Component, ChangeEvent } from "react";
+import React, { Component, ChangeEvent, FormEvent } from "react";
 import { Todo } from "./models";
 
 const TodoHeader = () => {
@@ -22,7 +22,7 @@ const _TodoItem = (props: TodoItemProps) => {
       <td>{todo.created}</td>
       <td>{todo.name}</td>
       <td>
-        <button onClick={() => props.onRemove()}>删除</button>
+        <button onClick={props.onRemove}>删除</button>
       </td>
     </tr>
   );
@@ -58,7 +58,8 @@ class TodoForm extends Component<TodoFormProps> {
     });
   };
 
-  submitForm = () => {
+  submitForm = (e: FormEvent) => {
+    e.preventDefault();
     this.props.handleSubmit(this.state);
     this.setState({
       name: ""
@@ -68,7 +69,7 @@ class TodoForm extends Component<TodoFormProps> {
   render() {
     const { name } = this.state;
     return (
-      <form>
+      <form onSubmit={this.submitForm}>
         <label>名称</label>
         <input type="text" name="name" value={name} onChange={this.handleChange} />
         <input type="button" value="提交" onClick={this.submitForm} />
