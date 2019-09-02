@@ -38,29 +38,27 @@ interface BoardProps {
 }
 
 class Board extends Component<BoardProps> {
+  ROWS = 3;
+  COLS = 3;
   renderSquare(i: number) {
-    return <Square value={this.props.squares[i]} onClick={() => this.props.onClick(i)} />;
+    return <Square key={i} value={this.props.squares[i]} onClick={() => this.props.onClick(i)} />;
   }
   render() {
-    return (
-      <div>
-        <div className="board-row">
-          {this.renderSquare(0)}
-          {this.renderSquare(1)}
-          {this.renderSquare(2)}
+    const rows = [];
+    for (let r = 0; r < this.ROWS; r++) {
+      const cols = [];
+      for (let c = 0; c < this.COLS; c++) {
+        const i = r * this.COLS + c;
+        const cell = this.renderSquare(i);
+        cols.push(cell);
+      }
+      rows.push(
+        <div key={r} className="board-row">
+          {cols}
         </div>
-        <div className="board-row">
-          {this.renderSquare(3)}
-          {this.renderSquare(4)}
-          {this.renderSquare(5)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(6)}
-          {this.renderSquare(7)}
-          {this.renderSquare(8)}
-        </div>
-      </div>
-    );
+      );
+    }
+    return <div> {rows} </div>;
   }
 }
 
