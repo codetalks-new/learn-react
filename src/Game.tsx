@@ -109,8 +109,9 @@ export default class Game extends Component {
       const row = (step.i / 3) | 0;
       const col = step.i % 3;
       const desc = move ? `Go to move #${move}(${row},${col})` : "Go to game start";
+      const liClass = this.state.stepNumber === move ? "move-item-selected" : "move-item";
       return (
-        <li key={move}>
+        <li key={move} className={liClass}>
           <button onClick={() => this.jumpTo(move)}> {desc} </button>
         </li>
       );

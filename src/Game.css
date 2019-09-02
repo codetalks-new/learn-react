@@ -49,3 +49,8 @@ ul {
 .game-info {
   margin-left: 20px;
 }
+
+.move-item-selected button {
+  color: blue;
+  font-weight: bold;
+}
