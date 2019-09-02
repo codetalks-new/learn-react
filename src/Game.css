@@ -32,6 +32,9 @@ ul {
   text-align: center;
   width: 34px;
 }
+.square-win {
+  color: orange;
+}
 
 .square:focus {
   outline: none;
