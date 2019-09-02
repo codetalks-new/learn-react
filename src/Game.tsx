@@ -79,7 +79,8 @@ export default class Game extends Component {
     history: [{ squares: Array(9).fill(null), i: 0 }],
     stepNumber: 0,
     xIsNext: true,
-    winner: null
+    winner: null,
+    isAscending: true
   };
   handleClick = (i: number) => {
     const history = this.state.history.slice(0, this.state.stepNumber + 1);
@@ -105,15 +106,21 @@ export default class Game extends Component {
     });
   }
 
+  toggleSortType = () => {
+    this.setState({
+      isAscending: !this.state.isAscending
+    });
+  };
+
   render() {
-    const history = this.state.history;
+    const { history, xIsNext, isAscending } = this.state;
     const current = history[this.state.stepNumber];
     const winner = calcWinner(current.squares);
     let status;
     if (winner) {
       status = `赢家: ${winner.player}`;
     } else {
-      const nextPlayer = this.state.xIsNext ? "X" : "O";
+      const nextPlayer = xIsNext ? "X" : "O";
       const endStep = ROWS * COLS;
       if (this.state.stepNumber < endStep) {
         status = `下一个玩家 : ${nextPlayer}`;
@@ -121,15 +128,17 @@ export default class Game extends Component {
         status = `平局`;
       }
     }
-
-    const moves = history.map((step, move) => {
+    const history_list = isAscending ? history : history.slice().reverse();
+    const MOVE_CONT = history_list.length;
+    const moves = history_list.map((step, raw_move) => {
       const row = (step.i / 3) | 0;
       const col = step.i % 3;
+      const move = isAscending ? raw_move : MOVE_CONT - raw_move - 1;
       const desc = move ? `Go to move #${move}(${row},${col})` : "Go to game start";
       const liClass = this.state.stepNumber === move ? "move-item-selected" : "move-item";
       return (
         <li key={move} className={liClass}>
-          <button onClick={() => this.jumpTo(move)}> {desc} </button>
+          <span className="move-no">{move}</span> <button onClick={() => this.jumpTo(move)}> {desc} </button>
         </li>
       );
     });
@@ -141,7 +150,8 @@ export default class Game extends Component {
         </div>
         <div className="game-info">
           <div>{status}</div>
-          <ol>{moves}</ol>
+          <button onClick={this.toggleSortType}>{isAscending ? "升序" : "降序"}</button>
+          <ul>{moves}</ul>
         </div>
       </div>
     );
