@@ -66,7 +66,7 @@ class Board extends Component<BoardProps> {
 
 export default class Game extends Component {
   readonly state = {
-    history: [{ squares: Array(9).fill(null) }],
+    history: [{ squares: Array(9).fill(null), i: 0 }],
     stepNumber: 0,
     xIsNext: true
   };
@@ -80,7 +80,7 @@ export default class Game extends Component {
     }
     squares[i] = xIsNext ? "X" : "O";
     this.setState({
-      history: history.concat([{ squares }]),
+      history: history.concat([{ squares, i }]),
       stepNumber: history.length,
       xIsNext: !xIsNext
     });
@@ -106,9 +106,11 @@ export default class Game extends Component {
     }
 
     const moves = history.map((step, move) => {
-      const desc = move ? `Go to move #${move}` : "Go to game start";
+      const row = (step.i / 3) | 0;
+      const col = step.i % 3;
+      const desc = move ? `Go to move #${move}(${row},${col})` : "Go to game start";
       return (
-        <li>
+        <li key={move}>
           <button onClick={() => this.jumpTo(move)}> {desc} </button>
         </li>
       );
