@@ -1,0 +1,29 @@
+.todo-list-header {
+  font-size: 13px;
+}
+.todo {
+  color: #ccc;
+  font-size: 13px;
+}
+.todo-name {
+  color: #eee;
+  font-size: 15px;
+}
+
+.todo-tag {
+  font-size: 14px;
+  font-weight: 400;
+  color: orange;
+}
+
+.tag-remove-button {
+  color: white;
+  background-color: red;
+  font-weight: 200;
+}
+.tag-add-button {
+  color: orange;
+  background-color: blue;
+  font-weight: 300;
+  margin-left: 8px;
+}
