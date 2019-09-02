@@ -47,9 +47,9 @@ interface BoardProps {
   onClick: (i: number) => void;
 }
 
+const ROWS = 3;
+const COLS = 3;
 class Board extends Component<BoardProps> {
-  ROWS = 3;
-  COLS = 3;
   renderSquare(i: number) {
     const winner = this.props.winner;
     const inWinLine = Boolean(winner && winner.line.includes(i));
@@ -57,10 +57,10 @@ class Board extends Component<BoardProps> {
   }
   render() {
     const rows = [];
-    for (let r = 0; r < this.ROWS; r++) {
+    for (let r = 0; r < ROWS; r++) {
       const cols = [];
-      for (let c = 0; c < this.COLS; c++) {
-        const i = r * this.COLS + c;
+      for (let c = 0; c < COLS; c++) {
+        const i = r * COLS + c;
         const cell = this.renderSquare(i);
         cols.push(cell);
       }
@@ -82,14 +82,12 @@ export default class Game extends Component {
     winner: null
   };
   handleClick = (i: number) => {
-    if (this.state.winner) {
-      return;
-    }
     const history = this.state.history.slice(0, this.state.stepNumber + 1);
     const xIsNext = this.state.xIsNext;
     const current = history[history.length - 1];
     const squares = current.squares.slice(); // 复制
-    if (squares[i]) {
+    const winner = calcWinner(squares);
+    if (winner || squares[i]) {
       return; // 已经结束,或者已经点击过了
     }
     squares[i] = xIsNext ? "X" : "O";
@@ -116,7 +114,12 @@ export default class Game extends Component {
       status = `赢家: ${winner.player}`;
     } else {
       const nextPlayer = this.state.xIsNext ? "X" : "O";
-      status = `下一个玩家 : ${nextPlayer}`;
+      const endStep = ROWS * COLS;
+      if (this.state.stepNumber < endStep) {
+        status = `下一个玩家 : ${nextPlayer}`;
+      } else {
+        status = `平局`;
+      }
     }
 
     const moves = history.map((step, move) => {
