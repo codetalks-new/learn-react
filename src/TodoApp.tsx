@@ -2,6 +2,7 @@ import React, { Component, ChangeEvent, FormEvent } from "react";
 import "./TodoApp.css";
 
 type StoreListener = () => void;
+
 interface Action {
   type: string;
 }
@@ -181,7 +182,7 @@ class TodoItem extends Component<TodoItemProps> {
     const tags = [];
     for (const tag of Array.from(todo.tags)) {
       tags.push(
-        <span className="todo-tag">
+        <span className="todo-tag" key={tag}>
           {tag}
           <button className="tag-remove-button" onClick={() => this.removeTag(tag)}>
             -
