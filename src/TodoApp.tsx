@@ -263,10 +263,15 @@ class TodoForm extends Component<TodoFormProps> {
 }
 
 export class TodoApp extends Component {
+  private unsubscribe: (() => void) | undefined;
   componentDidMount() {
-    todoStore.subscribe(() => {
+    this.unsubscribe = todoStore.subscribe(() => {
       this.setState(todoStore.getState());
     });
+  }
+
+  componentWillUnmount() {
+    this.unsubscribe && this.unsubscribe();
   }
 
   handleSubmit = (data: { name: string }) => {
