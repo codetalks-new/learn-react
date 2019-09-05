@@ -177,7 +177,11 @@ class TodoItem extends Component<TodoItemProps> {
     console.info(`Render TodoItem ${todo.name}`);
     const options = [<option value="">---</option>];
     for (const tag of BUILTIN_TAGS) {
-      options.push(<option value={tag}>{tag}</option>);
+      options.push(
+        <option value={tag} key={tag}>
+          {tag}
+        </option>
+      );
     }
     const tags = [];
     for (const tag of Array.from(todo.tags)) {
