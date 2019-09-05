@@ -15,12 +15,18 @@ class Mouse extends Component<{ render: (mouse: Point) => any }> {
   handleMouseMove = (event: MouseEvent) => {
     this.setState({
       x: event.clientX,
-      y: event.clientY
+      y: event.pageY
     });
+    console.info(
+      `client(X,Y):${event.clientX},${event.clientY}, page(X,Y):${event.pageX},${event.pageY}, screen(X,Y):${event.screenX},${event.screenY},movement(X,Y):${event.movementX},${event.movementY}`
+    );
   };
   render() {
     return (
-      <div style={{ height: "100%" }} onMouseMove={this.handleMouseMove}>
+      <div
+        style={{ height: "100%", border: "1px solid orange", width: "100%", position: "relative" }}
+        onMouseMove={this.handleMouseMove}
+      >
         <p>{this.props.render(this.state)}</p>
       </div>
     );
@@ -37,21 +43,24 @@ class Cat extends Component<{ mouse: Point }> {
     const { x, y } = this.props.mouse;
     const img = this.imgRef.current;
     let left = x;
-    let right = y;
+    let top = y;
     if (img) {
       const { clientWidth, clientHeight } = img;
+      console.info(
+        `img(clientWidth,clientHeight):${img.clientWidth}, ${img.clientHeight},img(width,height):${img.width},${img.height}`
+      );
       left = x - clientWidth * 0.5;
-      right = y - clientHeight * 0.5;
+      top = y - clientHeight * 0.5;
     }
 
-    return <img ref={this.imgRef} src={imgCat} alt="小猫" style={{ position: "absolute", left: left, right: right }} />;
+    return <img ref={this.imgRef} src={imgCat} alt="小猫" style={{ position: "absolute", left, top }} />;
   }
 }
 
 class MouseTrakcer extends Component {
   render() {
     return (
-      <div>
+      <div style={{ height: "100%" }}>
         <h3>在旁边移到下鼠标吧!</h3>
         <Mouse render={mouse => <Cat mouse={mouse} />} />
       </div>
