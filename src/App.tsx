@@ -1,29 +1,35 @@
-import React from "react";
-import logo from "./logo.svg";
+import React, { Component, MouseEvent } from "react";
 import "./App.css";
 
-function currentTime() {
-  return new Date().toISOString();
+class MouseTrakcer extends Component {
+  state = {
+    x: 0,
+    y: 0
+  };
+  handleMouseMove = (event: MouseEvent) => {
+    this.setState({
+      x: event.clientX,
+      y: event.clientY
+    });
+  };
+
+  render() {
+    const { x, y } = this.state;
+    return (
+      <div style={{ height: "100%" }} onMouseMove={this.handleMouseMove}>
+        <h3>在旁边移动下鼠标吧!</h3>
+        <p>
+          鼠标当前坐标: ({x},{y})
+        </p>
+      </div>
+    );
+  }
 }
 
 const App: React.FC = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <p>当前时间: {currentTime()} </p>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="App" style={{ height: "100%" }}>
+      <MouseTrakcer />
     </div>
   );
 };
