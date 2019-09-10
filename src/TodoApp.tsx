@@ -105,7 +105,7 @@ class TodoItem extends Component<TodoItemProps> {
         <span className="todo-tag">
           {tag}
           <button className="tag-remove-button" onClick={() => this.props.onRemoveTag(tag)}>
-            -
+            X
           </button>
         </span>
       );
@@ -122,7 +122,7 @@ class TodoItem extends Component<TodoItemProps> {
             </label>
           ) : (
             <button onClick={this.toggleTags} className="tag-add-button">
-              +
+              ＋
             </button>
           )}
         </td>
@@ -184,10 +184,10 @@ class TodoForm extends Component<TodoFormProps> {
   render() {
     const { name } = this.state;
     return (
-      <form onSubmit={this.submitForm}>
-        <label>名称</label>
-        <input type="text" name="name" value={name} onChange={this.handleChange} />
-        <input type="button" value="提交" onClick={this.submitForm} />
+      <form onSubmit={this.submitForm} style={{ marginTop: "8px" }}>
+        <label>事项名称:</label>
+        <input type="text" name="name" value={name} onChange={this.handleChange} autoComplete="off" />
+        <input type="button" value="添加" onClick={this.submitForm} style={{ marginLeft: "8px" }} />
       </form>
     );
   }
@@ -226,7 +226,7 @@ export class TodoApp extends Component {
     });
   };
   handleSubmit = (data: { name: string }) => {
-    const todo = { name: data.name, created: new Date().toLocaleString() };
+    const todo = new Todo(data.name);
     this.setState({
       todos: [...this.state.todos, todo]
     });
@@ -245,3 +245,12 @@ export class TodoApp extends Component {
     );
   }
 }
+
+/**
+ *
+ *
+ * [React & TypeScript]  手把手教你写一个简单的 Redux - by 代码会说话
+ *
+ *
+ *
+ */
