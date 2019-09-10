@@ -1,5 +1,10 @@
 import React, { Component, ChangeEvent, FormEvent } from "react";
 import "./TodoApp.css";
+import { listenerCount } from "cluster";
+
+interface Action {
+  type: string; //操作类型
+}
 
 enum BuiltinTag {
   IMPORTANT = "重要",
@@ -68,11 +73,76 @@ const TodoHeader = () => {
   );
 };
 
+enum TodoActionType {
+  ADD_TAG = "add_tag",
+  REMOVE_TAG = "add_tag",
+  ADD = "add",
+  REMOVE = "remove"
+}
+
+interface TodoAction extends Action {
+  type: TodoActionType;
+  todo: Todo;
+}
+
+type StoreListener = () => void;
+
+interface State {}
+
+const __init_action_type = "INIT_STORE";
+function createStore<T extends Action, S extends State>(reducer: (state: S, action: T) => S) {
+  const listeners: StoreListener[] = [];
+  let state: S = {} as any;
+  const getState = () => {
+    return state;
+  };
+  const subscribe = (listener: StoreListener) => {
+    listeners.push(listener);
+    const unsubscribe = () => {
+      const index = listeners.indexOf(listener);
+      listeners.splice(index, 1);
+    };
+    return unsubscribe;
+  };
+  const dispatch = (action: T) => {
+    state = reducer(state, action);
+    // midllware
+    listeners.forEach(listener => listener());
+  };
+  dispatch({ type: __init_action_type } as T);
+  return { dispatch, subscribe, getState };
+}
+
+interface TodoAppState extends State {
+  todos: Todo[];
+}
+
+const store = createStore<TodoAction, TodoAppState>((state, action) => {
+  if ((action.type as string) === __init_action_type) {
+    return {
+      todos: [
+        new Todo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+        new Todo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+        new Todo("学习 CSS")
+      ]
+    };
+  } else {
+    const todos = state.todos.slice(); // 复制
+    switch (action.type) {
+      case TodoActionType.ADD:
+        todos.push(action.todo);
+        break;
+      case TodoActionType.REMOVE:
+        const index = todos.indexOf(action.todo);
+        todos.splice(index, 1);
+        break;
+    }
+    return { ...state, todos };
+  }
+});
+
 export interface TodoItemProps {
   todo: Todo;
-  onRemove: () => void;
-  onAddTag: (tag: string) => void;
-  onRemoveTag: (tag: string) => void;
 }
 
 class TodoItem extends Component<TodoItemProps> {
@@ -87,9 +157,21 @@ class TodoItem extends Component<TodoItemProps> {
   onSelectTag = (e: ChangeEvent<HTMLSelectElement>) => {
     const tag = e.target.value;
     if (tag) {
-      this.props.onAddTag(tag);
+      const todo = this.props.todo;
+      todo.addTag(tag);
+      store.dispatch({ type: TodoActionType.ADD_TAG, todo: todo });
     }
     this.toggleTags();
+  };
+
+  removeTag = (tag: string) => {
+    const todo = this.props.todo;
+    todo.removeTag(tag);
+    store.dispatch({ type: TodoActionType.REMOVE_TAG, todo: todo });
+  };
+
+  removeTodo = () => {
+    store.dispatch({ type: TodoActionType.REMOVE, todo: this.props.todo });
   };
   render() {
     const todo = this.props.todo;
@@ -104,7 +186,7 @@ class TodoItem extends Component<TodoItemProps> {
       tags.push(
         <span className="todo-tag">
           {tag}
-          <button className="tag-remove-button" onClick={() => this.props.onRemoveTag(tag)}>
+          <button className="tag-remove-button" onClick={() => this.removeTag(tag)}>
             X
           </button>
         </span>
@@ -128,7 +210,7 @@ class TodoItem extends Component<TodoItemProps> {
         </td>
         <td className="todo-status">{phase.status}</td>
         <td className="todo-actions">
-          <button onClick={this.props.onRemove}>删除</button>
+          <button onClick={this.removeTodo}>删除</button>
         </td>
       </tr>
     );
@@ -137,29 +219,16 @@ class TodoItem extends Component<TodoItemProps> {
 
 export interface ToDoListProps {
   todos: Todo[];
-  removeTodo: (index: number) => void;
-  addTag: (index: number, tag: string) => void;
-  removeTag: (index: number, tag: string) => void;
 }
 
 export const TodoList = (props: ToDoListProps) => {
   const todos = props.todos.map((todo, index) => {
-    return (
-      <TodoItem
-        todo={todo}
-        key={todo.name}
-        onAddTag={tag => props.addTag(index, tag)}
-        onRemoveTag={tag => props.removeTag(index, tag)}
-        onRemove={() => props.removeTodo(index)}
-      />
-    );
+    return <TodoItem todo={todo} key={todo.name} />;
   });
   return <tbody>{todos}</tbody>;
 };
 
-interface TodoFormProps {
-  handleSubmit: Function;
-}
+interface TodoFormProps {}
 
 class TodoForm extends Component<TodoFormProps> {
   readonly state = {
@@ -175,7 +244,8 @@ class TodoForm extends Component<TodoFormProps> {
 
   submitForm = (e: FormEvent) => {
     e.preventDefault();
-    this.props.handleSubmit(this.state);
+    const todo = new Todo(this.state.name);
+    store.dispatch({ type: TodoActionType.ADD, todo: todo });
     this.setState({
       name: ""
     });
@@ -194,53 +264,27 @@ class TodoForm extends Component<TodoFormProps> {
 }
 
 export class TodoApp extends Component {
-  state = {
-    todos: [
-      new Todo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-      new Todo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-      new Todo("学习 CSS")
-    ]
-  };
+  unsubscribe: (() => void) | undefined;
 
-  removeTodo = (index: number) => {
-    const { todos } = this.state;
-    this.setState({
-      todos: todos.filter((_, i) => i !== index)
+  componentDidMount() {
+    this.unsubscribe = store.subscribe(() => {
+      this.setState(store.getState());
     });
-  };
+  }
 
-  addTag = (index: number, tag: string) => {
-    const todos = this.state.todos;
-    const todo = todos[index];
-    todo.addTag(tag);
-    this.setState({
-      todos
-    });
-  };
-  removeTag = (index: number, tag: string) => {
-    const todos = this.state.todos;
-    const todo = todos[index];
-    todo.removeTag(tag);
-    this.setState({
-      todos
-    });
-  };
-  handleSubmit = (data: { name: string }) => {
-    const todo = new Todo(data.name);
-    this.setState({
-      todos: [...this.state.todos, todo]
-    });
-  };
+  componentWillUnmount() {
+    this.unsubscribe && this.unsubscribe();
+  }
 
   render() {
-    const { todos } = this.state;
+    const { todos } = store.getState();
     return (
       <div>
         <table>
           <TodoHeader />
-          <TodoList todos={todos} addTag={this.addTag} removeTag={this.removeTag} removeTodo={this.removeTodo} />
+          <TodoList todos={todos} />
         </table>
-        <TodoForm handleSubmit={this.handleSubmit} />
+        <TodoForm />
       </div>
     );
   }
