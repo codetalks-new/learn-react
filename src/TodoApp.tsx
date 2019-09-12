@@ -27,7 +27,6 @@ class Todo {
   tags: Set<string>;
   created: Date;
   phases: Phase[] = [];
-  finished?: Date;
   constructor(name: string, tags: string[] = []) {
     this.name = name;
     this.created = new Date();
@@ -36,7 +35,7 @@ class Todo {
   }
 
   markFinished() {
-    this.finished = new Date();
+    this.phases.push(new Phase(Status.FINISHED));
   }
   addTag(tag: string) {
     this.tags.add(tag);
@@ -60,36 +59,6 @@ enum BuiltinTag {
 }
 
 const BUILTIN_TAGS = [BuiltinTag.IMPORTANT, BuiltinTag.NOTIMPORTANT, BuiltinTag.URGENT, BuiltinTag.NOTURGENT];
-
-interface TodoAction extends Action {
-  todo: Todo;
-}
-
-interface TodoState extends State {
-  todos: Todo[];
-}
-
-const todoStore = createStore<TodoState, TodoAction>((state, action) => {
-  if (!action.type) {
-    const todos = [
-      new Todo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-      new Todo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-      new Todo("学习 CSS")
-    ];
-    return { ...state, todos };
-  } else {
-    const todos = state.todos.slice(); // 复制
-    switch (action.type) {
-      case TodoActionType.ADD:
-        todos.push(action.todo);
-        break;
-      case TodoActionType.REMOVE:
-        const index = todos.indexOf(action.todo);
-        todos.splice(index, 1);
-    }
-    return { ...state, todos };
-  }
-});
 
 const TodoHeader = () => {
   return (
@@ -123,7 +92,8 @@ class TodoItem extends Component<TodoItemProps> {
     const todo = this.props.todo;
     if (tag) {
       todo.addTag(tag);
-      todoStore.dispatch({ todo, type: TodoActionType.EDIT });
+      const { store } = this.context;
+      store.dispatch({ todo, type: TodoActionType.EDIT });
     }
     this.toggleTags();
   };
@@ -131,13 +101,15 @@ class TodoItem extends Component<TodoItemProps> {
     if (tag) {
       const todo = this.props.todo;
       todo.removeTag(tag);
-      todoStore.dispatch({ todo, type: TodoActionType.EDIT });
+      const { store } = this.context;
+      store.dispatch({ todo, type: TodoActionType.EDIT });
     }
   };
 
   onRemove = () => {
     const todo = this.props.todo;
-    todoStore.dispatch({ todo, type: TodoActionType.REMOVE });
+    const { store } = this.context;
+    store.dispatch({ todo, type: TodoActionType.REMOVE });
   };
 
   render() {
@@ -195,9 +167,7 @@ export const TodoList = (props: ToDoListProps) => {
   return <tbody>{todos}</tbody>;
 };
 
-interface TodoFormProps {
-  handleSubmit: Function;
-}
+interface TodoFormProps {}
 
 class TodoForm extends Component<TodoFormProps> {
   readonly state = {
@@ -213,7 +183,9 @@ class TodoForm extends Component<TodoFormProps> {
 
   submitForm = (e: FormEvent) => {
     e.preventDefault();
-    this.props.handleSubmit(this.state);
+    const { store } = this.context;
+    const todo = new Todo(this.state.name);
+    store.dispatch({ todo, type: TodoActionType.ADD });
     this.setState({
       name: ""
     });
@@ -231,6 +203,40 @@ class TodoForm extends Component<TodoFormProps> {
   }
 }
 
+interface TodoAction extends Action {
+  todo: Todo;
+}
+
+interface TodoState extends State {
+  todos: Todo[];
+}
+
+const todoStore = createStore<TodoState, TodoAction>((state, action) => {
+  if (!action.type) {
+    const todos = [
+      new Todo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+      new Todo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+      new Todo("学习 CSS")
+    ];
+    return { ...state, todos };
+  } else {
+    const todos = state.todos.slice(); // 复制
+    switch (action.type) {
+      case TodoActionType.ADD:
+        todos.push(action.todo);
+        break;
+      case TodoActionType.REMOVE:
+        const index = todos.indexOf(action.todo);
+        todos.splice(index, 1);
+    }
+    return { ...state, todos };
+  }
+});
+
+const StoreContext = React.createContext({
+  store: todoStore
+});
+
 export class TodoApp extends Component {
   private unsubscribe: (() => void) | undefined;
   componentDidMount() {
@@ -243,21 +249,16 @@ export class TodoApp extends Component {
     this.unsubscribe && this.unsubscribe();
   }
 
-  handleSubmit = (data: { name: string }) => {
-    const todo = new Todo(data.name);
-    todoStore.dispatch({ todo, type: TodoActionType.ADD });
-  };
-
   render() {
     const { todos } = todoStore.getState();
     return (
-      <div>
+      <StoreContext.Provider value={{ store: todoStore }}>
         <table>
           <TodoHeader />
           <TodoList todos={todos} />
         </table>
-        <TodoForm handleSubmit={this.handleSubmit} />
-      </div>
+        <TodoForm />
+      </StoreContext.Provider>
     );
   }
 }
