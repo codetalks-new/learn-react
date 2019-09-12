@@ -1,37 +1,6 @@
 import React, { Component, ChangeEvent, FormEvent } from "react";
 import "./TodoApp.css";
-
-type StoreListener = () => void;
-
-interface Action {
-  type: string;
-}
-
-interface State {}
-
-function createStore<S extends State, T extends Action>(reducer: (state: S, action: T) => S) {
-  let state: S = {} as any;
-  const listeners: StoreListener[] = [];
-  const getState = () => {
-    return state;
-  };
-  const subscribe = (listener: StoreListener) => {
-    listeners.push(listener);
-    const unsubscribe = () => {
-      const index = listeners.indexOf(listener);
-      listeners.splice(index, 1);
-    };
-    return unsubscribe;
-  };
-
-  const dispatch = (action: T) => {
-    state = reducer(state, action);
-    listeners.forEach(listener => listener());
-  };
-
-  dispatch({ type: "" } as T);
-  return { dispatch, subscribe, getState };
-}
+import createStore, { Action, State } from "./createStore";
 
 enum Status {
   CREATED = "创建",
