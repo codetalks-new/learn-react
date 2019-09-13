@@ -1,47 +1,46 @@
 import React, { Component } from "react";
-import "./App.css";
 
-const ThemeContext = React.createContext("light");
-const LangContext = React.createContext("中文");
+const config = {
+  theme: "dark",
+  lang: "中文"
+};
+
+const UIConfigContext = React.createContext(config);
+
+// I love china!
 const Button = () => (
-  <ThemeContext.Consumer>
-    {theme => (
-      <LangContext.Consumer>
-        {lang => (
-          <button>
-            主题色为:{theme}, 当前语言为: {lang}
-          </button>
-        )}
-      </LangContext.Consumer>
+  <UIConfigContext.Consumer>
+    {config => (
+      <button>
+        主题色:{config.theme},语言:{config.lang}
+      </button>
     )}
-  </ThemeContext.Consumer>
+  </UIConfigContext.Consumer>
 );
 
-const ThemedButton = () => <Button />;
+const RoundButton = () => <Button />;
 
-class MyText extends Component {
-  static contextType = ThemeContext;
+class ToolBar extends Component {
+  static contextType = UIConfigContext;
   render() {
-    const theme = this.context;
-    console.warn("current theme:", theme);
-    return <span>当前主题色:{theme}</span>;
+    const { theme, lang } = this.context;
+    return <RoundButton />;
   }
 }
 
-const Toolbar = () => (
-  <div>
-    <ThemedButton />
-    <MyText />
-  </div>
-);
-
 const App: React.FC = () => (
   <div className="App">
-    <ThemeContext.Provider value="dark">
-      <LangContext.Provider value="中文">
-        <Toolbar />
-      </LangContext.Provider>
-    </ThemeContext.Provider>
+    <div style={{ marginTop: 20, marginRight: 20, float: "right" }}>
+      <div className="App-head">
+        <UIConfigContext.Provider value={config}>
+          <ToolBar />
+        </UIConfigContext.Provider>
+        <h1>欢迎来到 CodeTalks 的 编程实验室, </h1>
+        <p>[React & TypeScript] (1) Context, 用规范的方式做正确的事,真难!</p>
+        <p>- by 代码会说话 2019-09-13</p>
+        <p>中秋节快乐</p>
+      </div>
+    </div>
   </div>
 );
 
