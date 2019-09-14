@@ -1,4 +1,4 @@
-import React, { Component, ChangeEvent, FormEvent } from "react";
+import React, { Component, ChangeEvent, FormEvent, Fragment } from "react";
 import "./TodoApp.css";
 
 interface Action {
@@ -12,15 +12,18 @@ enum BuiltinTag {
   NOTURGENT = "不紧急"
 }
 
-const BUILTIN_TAGS = [BuiltinTag.IMPORTANT, BuiltinTag.NOTIMPORTANT, BuiltinTag.URGENT, BuiltinTag.NOTURGENT];
+const BUILTIN_TAGS = [
+  BuiltinTag.IMPORTANT,
+  BuiltinTag.NOTIMPORTANT,
+  BuiltinTag.URGENT,
+  BuiltinTag.NOTURGENT
+];
 
 enum Status {
   CREATED = "创建",
-  pending = "准备处理",
-  DOING = "进入中",
+  DOING = "处理中",
   PAUSE = "暂停处理",
   FINISHED = "已完成",
-  CANCELED = "已取消",
   DELETED = "已删除"
 }
 
@@ -37,8 +40,13 @@ interface Todo {
   phases: Phase[];
 }
 
-const makeTodo = (name: string, tags: string[] = [], phases: Phase[] = []): Todo => {
-  let phases_fallback = phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
+const makeTodo = (
+  name: string,
+  tags: string[] = [],
+  phases: Phase[] = []
+): Todo => {
+  let phases_fallback =
+    phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
   return {
     name,
     tags,
@@ -64,13 +72,15 @@ enum TodoActionType {
   ADD_TAG = "add_tag",
   REMOVE_TAG = "remove_tag",
   ADD = "add",
-  REMOVE = "remove"
+  REMOVE = "remove",
+  UPDATE_STATUS = "update_status"
 }
 
 interface TodoAction extends Action {
   type: TodoActionType;
   todo: Todo;
   tag?: string;
+  targetStatus?: Status;
 }
 
 type StoreListener = () => void;
@@ -80,7 +90,9 @@ interface State {}
 // redux
 
 const __init_action_type = "INIT_STORE";
-function createStore<T extends Action, S extends State>(reducer: (state: S, action: T) => S) {
+function createStore<T extends Action, S extends State>(
+  reducer: (state: S, action: T) => S
+) {
   const listeners: StoreListener[] = [];
   let state: S = {} as any;
   const getState = () => {
@@ -150,6 +162,15 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
           todos[index] = newTodo;
         }
         break;
+      case TodoActionType.UPDATE_STATUS:
+        {
+          const index = todos.indexOf(todo);
+          const phases = todo.phases.slice();
+          phases.push({ from: new Date(), status: action.targetStatus! });
+          const newTodo = { ...todo, phases };
+          todos[index] = newTodo;
+        }
+        break;
     }
     return { ...state, todos };
   }
@@ -193,6 +214,42 @@ class TodoItem extends Component<TodoItemProps> {
     const { dispatch } = this.context as StoreType;
     dispatch({ type: TodoActionType.REMOVE, todo: this.props.todo });
   };
+
+  renderActions = (status: Status) => {
+    const todo = this.props.todo;
+    const { dispatch } = this.context as StoreType;
+    const updateStatus = (targetStatus: Status) => {
+      const action: TodoAction = {
+        type: TodoActionType.UPDATE_STATUS,
+        todo,
+        targetStatus
+      };
+      dispatch(action);
+    };
+    // status -> action -> targetStatus
+
+    const statusTransitionMap = {
+      [Status.CREATED]: [["开始处理", Status.DOING], ["删除", Status.DELETED]],
+      [Status.DOING]: [
+        ["完成", Status.FINISHED],
+        ["暂停", Status.PAUSE],
+        ["删除", Status.DELETED]
+      ],
+      [Status.PAUSE]: [["开始处理", Status.DOING], ["删除", Status.DELETED]],
+      [Status.FINISHED]: [["删除", Status.DELETED]]
+    };
+
+    const actionStatusArray: [string, Status][] = (statusTransitionMap as any)[
+      status
+    ];
+    if (actionStatusArray) {
+      return actionStatusArray.map(([action, targetStatus]) => (
+        <button onClick={() => updateStatus(targetStatus)}>{action}</button>
+      ));
+    } else {
+      return <Fragment />;
+    }
+  };
   render() {
     const todo = this.props.todo;
     const phase = todo.phases[todo.phases.length - 1];
@@ -214,7 +271,10 @@ class TodoItem extends Component<TodoItemProps> {
       tags.push(
         <span className="todo-tag" key={tag}>
           {tag}
-          <button className="tag-remove-button" onClick={() => this.removeTag(tag)}>
+          <button
+            className="tag-remove-button"
+            onClick={() => this.removeTag(tag)}
+          >
             X
           </button>
         </span>
@@ -238,9 +298,7 @@ class TodoItem extends Component<TodoItemProps> {
           )}
         </td>
         <td className="todo-status">{phase.status}</td>
-        <td className="todo-actions">
-          <button onClick={this.removeTodo}>删除</button>
-        </td>
+        <td className="todo-actions">{this.renderActions(phase.status)}</td>
       </tr>
     );
   }
@@ -290,8 +348,19 @@ class TodoForm extends Component<TodoFormProps> {
     return (
       <form onSubmit={this.submitForm} style={{ marginTop: "8px" }}>
         <label>事项名称:</label>
-        <input type="text" name="name" value={name} onChange={this.handleChange} autoComplete="off" />
-        <input type="button" value="添加" onClick={this.submitForm} style={{ marginLeft: "8px" }} />
+        <input
+          type="text"
+          name="name"
+          value={name}
+          onChange={this.handleChange}
+          autoComplete="off"
+        />
+        <input
+          type="button"
+          value="添加"
+          onClick={this.submitForm}
+          style={{ marginLeft: "8px" }}
+        />
       </form>
     );
   }
