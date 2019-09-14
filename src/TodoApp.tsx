@@ -76,14 +76,32 @@ enum TodoActionType {
   UPDATE_STATUS = "update_status",
   FILTER_BY_STATUS = "filter_by_status"
 }
-
-interface TodoAction extends Action {
-  type: TodoActionType;
-  todo?: Todo;
-  tag?: string;
-  targetStatus?: Status;
-  filterStatus?: Status | null | undefined;
+// payload
+interface TodoObjectAction extends Action {
+  type: TodoActionType.ADD | TodoActionType.REMOVE;
+  todo: Todo;
 }
+
+interface TagAction extends Action {
+  type: TodoActionType.ADD_TAG | TodoActionType.REMOVE_TAG;
+  todo: Todo;
+  tag: string;
+}
+interface UpdateStatusAction extends Action {
+  type: TodoActionType.UPDATE_STATUS;
+  todo: Todo;
+  targetStatus: Status;
+}
+interface FilterByStatusAction extends Action {
+  type: TodoActionType.FILTER_BY_STATUS;
+  filterStatus: Status | null | undefined;
+}
+
+type TodoAction =
+  | TodoObjectAction
+  | TagAction
+  | UpdateStatusAction
+  | FilterByStatusAction;
 
 type StoreListener = () => void;
 
@@ -136,7 +154,7 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
     return { ...state, filterStatus: action.filterStatus };
   } else {
     const todos = state.todos.slice(); // 复制
-    const todo = action.todo!;
+    const todo = action.todo;
     switch (action.type) {
       case TodoActionType.ADD:
         todos.push(todo);
@@ -151,7 +169,7 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
         {
           const index = todos.indexOf(todo);
           const tag_set = new Set(todo.tags);
-          tag_set.add(action.tag!);
+          tag_set.add(action.tag);
           const tags = Array.from(tag_set);
           const newTodo = { ...todo, tags };
           todos[index] = newTodo;
@@ -161,7 +179,7 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
         {
           const index = todos.indexOf(todo);
           const tags = todo.tags.slice();
-          const tagIndex = todo.tags.indexOf(action.tag!);
+          const tagIndex = todo.tags.indexOf(action.tag);
           tags.splice(tagIndex, 1);
           console.info(`oldTags:${todo.tags}, newTags:${tags}`);
           const newTodo = { ...todo, tags };
@@ -172,7 +190,7 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
         {
           const index = todos.indexOf(todo);
           const phases = todo.phases.slice();
-          phases.push({ from: new Date(), status: action.targetStatus! });
+          phases.push({ from: new Date(), status: action.targetStatus });
           const newTodo = { ...todo, phases };
           todos[index] = newTodo;
         }
