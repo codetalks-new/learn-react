@@ -24,39 +24,27 @@ enum Status {
   DELETED = "已删除"
 }
 
-class Phase {
+interface Phase {
   from: Date;
   to?: Date;
   status: Status;
-  constructor(status: Status) {
-    this.status = status;
-    this.from = new Date();
-  }
 }
+// redux 可序列化,不可变性
 
-class Todo {
+interface Todo {
   name: string;
-  tags: Set<string>;
-  created: Date;
-  phases: Phase[] = [];
-  finished?: Date;
-  constructor(name: string, tags: string[] = []) {
-    this.name = name;
-    this.created = new Date();
-    this.tags = new Set(tags);
-    this.phases.push(new Phase(Status.CREATED));
-  }
-
-  markFinished() {
-    this.finished = new Date();
-  }
-  addTag(tag: string) {
-    this.tags.add(tag);
-  }
-  removeTag(tag: string) {
-    this.tags.delete(tag);
-  }
+  tags: string[];
+  phases: Phase[];
 }
+
+const makeTodo = (name: string, tags: string[] = [], phases: Phase[] = []): Todo => {
+  let phases_fallback = phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
+  return {
+    name,
+    tags,
+    phases: phases_fallback
+  };
+};
 
 const TodoHeader = () => {
   return (
@@ -74,7 +62,7 @@ const TodoHeader = () => {
 
 enum TodoActionType {
   ADD_TAG = "add_tag",
-  REMOVE_TAG = "add_tag",
+  REMOVE_TAG = "remove_tag",
   ADD = "add",
   REMOVE = "remove"
 }
@@ -82,6 +70,7 @@ enum TodoActionType {
 interface TodoAction extends Action {
   type: TodoActionType;
   todo: Todo;
+  tag?: string;
 }
 
 type StoreListener = () => void;
@@ -122,20 +111,44 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
   if ((action.type as string) === __init_action_type) {
     return {
       todos: [
-        new Todo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-        new Todo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-        new Todo("学习 CSS")
+        makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+        makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+        makeTodo("学习 CSS")
       ]
     };
   } else {
     const todos = state.todos.slice(); // 复制
+    const todo = action.todo;
     switch (action.type) {
       case TodoActionType.ADD:
-        todos.push(action.todo);
+        todos.push(todo);
         break;
       case TodoActionType.REMOVE:
-        const index = todos.indexOf(action.todo);
-        todos.splice(index, 1);
+        {
+          const index = todos.indexOf(todo);
+          todos.splice(index, 1);
+        }
+        break;
+      case TodoActionType.ADD_TAG:
+        {
+          const index = todos.indexOf(todo);
+          const tag_set = new Set(todo.tags);
+          tag_set.add(action.tag!);
+          const tags = Array.from(tag_set);
+          const newTodo = { ...todo, tags };
+          todos[index] = newTodo;
+        }
+        break;
+      case TodoActionType.REMOVE_TAG:
+        {
+          const index = todos.indexOf(todo);
+          const tags = todo.tags.slice();
+          const tagIndex = todo.tags.indexOf(action.tag!);
+          tags.splice(tagIndex, 1);
+          console.info(`oldTags:${todo.tags}, newTags:${tags}`);
+          const newTodo = { ...todo, tags };
+          todos[index] = newTodo;
+        }
         break;
     }
     return { ...state, todos };
@@ -164,18 +177,16 @@ class TodoItem extends Component<TodoItemProps> {
     const tag = e.target.value;
     if (tag) {
       const todo = this.props.todo;
-      todo.addTag(tag);
       const { dispatch } = this.context as StoreType;
-      dispatch({ type: TodoActionType.ADD_TAG, todo: todo });
+      dispatch({ type: TodoActionType.ADD_TAG, todo, tag });
     }
     this.toggleTags();
   };
 
   removeTag = (tag: string) => {
     const todo = this.props.todo;
-    todo.removeTag(tag);
     const { dispatch } = this.context as StoreType;
-    dispatch({ type: TodoActionType.REMOVE_TAG, todo: todo });
+    dispatch({ type: TodoActionType.REMOVE_TAG, todo, tag });
   };
 
   removeTodo = () => {
@@ -186,14 +197,22 @@ class TodoItem extends Component<TodoItemProps> {
     const todo = this.props.todo;
     const phase = todo.phases[todo.phases.length - 1];
     console.info(`Render TodoItem ${todo.name}`);
-    const options = [<option value="">---</option>];
+    const options = [
+      <option value="" key="empty">
+        ---
+      </option>
+    ];
     for (const tag of BUILTIN_TAGS) {
-      options.push(<option value={tag}>{tag}</option>);
+      options.push(
+        <option value={tag} key={tag}>
+          {tag}
+        </option>
+      );
     }
     const tags = [];
     for (const tag of Array.from(todo.tags)) {
       tags.push(
-        <span className="todo-tag">
+        <span className="todo-tag" key={tag}>
           {tag}
           <button className="tag-remove-button" onClick={() => this.removeTag(tag)}>
             X
@@ -201,9 +220,10 @@ class TodoItem extends Component<TodoItemProps> {
         </span>
       );
     }
+    const firstPhase = todo.phases[0];
     return (
       <tr className="todo">
-        <td className="todo-created">{todo.created.toLocaleTimeString()}</td>
+        <td className="todo-created">{firstPhase.from.toLocaleTimeString()}</td>
         <td className="todo-name">{todo.name}</td>
         <td className="todo-tags">
           {tags}
@@ -257,7 +277,7 @@ class TodoForm extends Component<TodoFormProps> {
 
   submitForm = (e: FormEvent) => {
     e.preventDefault();
-    const todo = new Todo(this.state.name);
+    const todo = makeTodo(this.state.name);
     const { dispatch } = this.context as StoreType;
     dispatch({ type: TodoActionType.ADD, todo: todo });
     this.setState({

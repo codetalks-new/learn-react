@@ -7,7 +7,7 @@ const App: React.FC = () => {
     <div className="App">
       <header className="App-header" style={{ float: "right" }}>
         <h3>欢迎来到代码会说话的编程实验室</h3>
-        <p>[React &TypeScript](2) 用Context 优化 store的的引用</p>
+        <p>[React &TypeScript](3) 净化 redux store - 去掉类实例</p>
         <TodoApp />
       </header>
     </div>
