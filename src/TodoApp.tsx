@@ -73,14 +73,16 @@ enum TodoActionType {
   REMOVE_TAG = "remove_tag",
   ADD = "add",
   REMOVE = "remove",
-  UPDATE_STATUS = "update_status"
+  UPDATE_STATUS = "update_status",
+  FILTER_BY_STATUS = "filter_by_status"
 }
 
 interface TodoAction extends Action {
   type: TodoActionType;
-  todo: Todo;
+  todo?: Todo;
   tag?: string;
   targetStatus?: Status;
+  filterStatus?: Status | null | undefined;
 }
 
 type StoreListener = () => void;
@@ -117,6 +119,7 @@ function createStore<T extends Action, S extends State>(
 
 interface TodoAppState extends State {
   todos: Todo[];
+  filterStatus: Status | null | undefined;
 }
 
 const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
@@ -126,11 +129,14 @@ const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
         makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
         makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
         makeTodo("学习 CSS")
-      ]
+      ],
+      filterStatus: null
     };
+  } else if (action.type === TodoActionType.FILTER_BY_STATUS) {
+    return { ...state, filterStatus: action.filterStatus };
   } else {
     const todos = state.todos.slice(); // 复制
-    const todo = action.todo;
+    const todo = action.todo!;
     switch (action.type) {
       case TodoActionType.ADD:
         todos.push(todo);
@@ -244,7 +250,9 @@ class TodoItem extends Component<TodoItemProps> {
     ];
     if (actionStatusArray) {
       return actionStatusArray.map(([action, targetStatus]) => (
-        <button onClick={() => updateStatus(targetStatus)}>{action}</button>
+        <button key={action} onClick={() => updateStatus(targetStatus)}>
+          {action}
+        </button>
       ));
     } else {
       return <Fragment />;
@@ -306,17 +314,27 @@ class TodoItem extends Component<TodoItemProps> {
 
 export interface ToDoListProps {}
 
-export const TodoList = (props: ToDoListProps) => (
-  <StoreContext.Consumer>
-    {store => (
+class TodoList extends Component<ToDoListProps> {
+  static contextType = StoreContext;
+  render() {
+    const { getState } = this.context as StoreType;
+    const state = getState();
+    const todoStatus = (todo: Todo) => {
+      const phase = todo.phases[todo.phases.length - 1];
+      return phase.status;
+    };
+    let todos = !state.filterStatus
+      ? state.todos
+      : state.todos.filter(todo => todoStatus(todo) === state.filterStatus);
+    return (
       <tbody>
-        {store.getState().todos.map((todo, index) => {
+        {todos.map((todo, index) => {
           return <TodoItem todo={todo} key={todo.name} />;
         })}
       </tbody>
-    )}
-  </StoreContext.Consumer>
-);
+    );
+  }
+}
 
 interface TodoFormProps {}
 
@@ -366,6 +384,46 @@ class TodoForm extends Component<TodoFormProps> {
   }
 }
 
+class TodoFilter extends Component {
+  static contextType = StoreContext;
+  render() {
+    const { dispatch, getState } = this.context as StoreType;
+    const state = getState();
+
+    const filterByStatus = (status: Status | null) => {
+      dispatch({ type: TodoActionType.FILTER_BY_STATUS, filterStatus: status });
+    };
+    const statusKeys = Object.keys(Status);
+    const buttons = statusKeys.map(key => {
+      const status = (Status as any)[key];
+      const active = state.filterStatus === status;
+      return (
+        <button
+          key={status}
+          onClick={() => filterByStatus(status)}
+          className={active ? "active" : ""}
+        >
+          {status}
+        </button>
+      );
+    });
+    const showAll = !state.filterStatus;
+    return (
+      <div>
+        <h3>按状态筛选:</h3>
+        <button
+          key="all"
+          onClick={() => filterByStatus(null)}
+          className={showAll ? "active" : ""}
+        >
+          所有
+        </button>
+        {buttons}
+      </div>
+    );
+  }
+}
+
 export class TodoApp extends Component {
   unsubscribe: (() => void) | undefined;
 
@@ -383,6 +441,7 @@ export class TodoApp extends Component {
     return (
       <div>
         <StoreContext.Provider value={todoStore}>
+          <TodoFilter />
           <table>
             <TodoHeader />
             <TodoList />
