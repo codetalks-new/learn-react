@@ -1,6 +1,5 @@
 import React, { Component, ChangeEvent, FormEvent } from "react";
 import "./TodoApp.css";
-import { listenerCount } from "cluster";
 
 interface Action {
   type: string; //操作类型
@@ -89,6 +88,8 @@ type StoreListener = () => void;
 
 interface State {}
 
+// redux
+
 const __init_action_type = "INIT_STORE";
 function createStore<T extends Action, S extends State>(reducer: (state: S, action: T) => S) {
   const listeners: StoreListener[] = [];
@@ -117,7 +118,7 @@ interface TodoAppState extends State {
   todos: Todo[];
 }
 
-const store = createStore<TodoAction, TodoAppState>((state, action) => {
+const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
   if ((action.type as string) === __init_action_type) {
     return {
       todos: [
@@ -141,11 +142,16 @@ const store = createStore<TodoAction, TodoAppState>((state, action) => {
   }
 });
 
+const StoreContext = React.createContext(todoStore);
+
+type StoreType = typeof todoStore;
+
 export interface TodoItemProps {
   todo: Todo;
 }
 
 class TodoItem extends Component<TodoItemProps> {
+  static contextType = StoreContext;
   state = {
     showTagSelect: false
   };
@@ -159,7 +165,8 @@ class TodoItem extends Component<TodoItemProps> {
     if (tag) {
       const todo = this.props.todo;
       todo.addTag(tag);
-      store.dispatch({ type: TodoActionType.ADD_TAG, todo: todo });
+      const { dispatch } = this.context as StoreType;
+      dispatch({ type: TodoActionType.ADD_TAG, todo: todo });
     }
     this.toggleTags();
   };
@@ -167,11 +174,13 @@ class TodoItem extends Component<TodoItemProps> {
   removeTag = (tag: string) => {
     const todo = this.props.todo;
     todo.removeTag(tag);
-    store.dispatch({ type: TodoActionType.REMOVE_TAG, todo: todo });
+    const { dispatch } = this.context as StoreType;
+    dispatch({ type: TodoActionType.REMOVE_TAG, todo: todo });
   };
 
   removeTodo = () => {
-    store.dispatch({ type: TodoActionType.REMOVE, todo: this.props.todo });
+    const { dispatch } = this.context as StoreType;
+    dispatch({ type: TodoActionType.REMOVE, todo: this.props.todo });
   };
   render() {
     const todo = this.props.todo;
@@ -194,7 +203,7 @@ class TodoItem extends Component<TodoItemProps> {
     }
     return (
       <tr className="todo">
-        <td className="todo-created">{todo.created.toISOString()}</td>
+        <td className="todo-created">{todo.created.toLocaleTimeString()}</td>
         <td className="todo-name">{todo.name}</td>
         <td className="todo-tags">
           {tags}
@@ -217,20 +226,24 @@ class TodoItem extends Component<TodoItemProps> {
   }
 }
 
-export interface ToDoListProps {
-  todos: Todo[];
-}
+export interface ToDoListProps {}
 
-export const TodoList = (props: ToDoListProps) => {
-  const todos = props.todos.map((todo, index) => {
-    return <TodoItem todo={todo} key={todo.name} />;
-  });
-  return <tbody>{todos}</tbody>;
-};
+export const TodoList = (props: ToDoListProps) => (
+  <StoreContext.Consumer>
+    {store => (
+      <tbody>
+        {store.getState().todos.map((todo, index) => {
+          return <TodoItem todo={todo} key={todo.name} />;
+        })}
+      </tbody>
+    )}
+  </StoreContext.Consumer>
+);
 
 interface TodoFormProps {}
 
 class TodoForm extends Component<TodoFormProps> {
+  static contextType = StoreContext;
   readonly state = {
     name: ""
   };
@@ -245,7 +258,8 @@ class TodoForm extends Component<TodoFormProps> {
   submitForm = (e: FormEvent) => {
     e.preventDefault();
     const todo = new Todo(this.state.name);
-    store.dispatch({ type: TodoActionType.ADD, todo: todo });
+    const { dispatch } = this.context as StoreType;
+    dispatch({ type: TodoActionType.ADD, todo: todo });
     this.setState({
       name: ""
     });
@@ -267,8 +281,8 @@ export class TodoApp extends Component {
   unsubscribe: (() => void) | undefined;
 
   componentDidMount() {
-    this.unsubscribe = store.subscribe(() => {
-      this.setState(store.getState());
+    this.unsubscribe = todoStore.subscribe(() => {
+      this.setState(todoStore.getState());
     });
   }
 
@@ -277,24 +291,16 @@ export class TodoApp extends Component {
   }
 
   render() {
-    const { todos } = store.getState();
     return (
       <div>
-        <table>
-          <TodoHeader />
-          <TodoList todos={todos} />
-        </table>
-        <TodoForm />
+        <StoreContext.Provider value={todoStore}>
+          <table>
+            <TodoHeader />
+            <TodoList />
+          </table>
+          <TodoForm />
+        </StoreContext.Provider>
       </div>
     );
   }
 }
-
-/**
- *
- *
- * [React & TypeScript]  手把手教你写一个简单的 Redux - by 代码会说话
- *
- *
- *
- */
