@@ -138,63 +138,93 @@ interface TodoAppState extends State {
   filterStatus: Status | null | undefined;
 }
 
+const todoObjectReducer = (state: TodoAppState, action: TodoObjectAction): TodoAppState => {
+  const todos = state.todos.slice(); // 复制
+  const todo = action.todo;
+  switch (action.type) {
+    case TodoActionType.ADD:
+      todos.push(todo);
+      break;
+    case TodoActionType.REMOVE:
+      {
+        const index = todos.indexOf(todo);
+        todos.splice(index, 1);
+      }
+      break;
+  }
+  return { ...state, todos };
+};
+
+const todoTagReducer = (state: TodoAppState, action: TagAction): TodoAppState => {
+  const todos = state.todos.slice(); // 复制
+  const todo = action.todo;
+  switch (action.type) {
+    case TodoActionType.ADD_TAG:
+      {
+        const index = todos.indexOf(todo);
+        const tag_set = new Set(todo.tags);
+        tag_set.add(action.tag);
+        const tags = Array.from(tag_set);
+        const newTodo = { ...todo, tags };
+        todos[index] = newTodo;
+      }
+      break;
+    case TodoActionType.REMOVE_TAG:
+      {
+        const index = todos.indexOf(todo);
+        const tags = todo.tags.slice();
+        const tagIndex = todo.tags.indexOf(action.tag);
+        tags.splice(tagIndex, 1);
+        console.info(`oldTags:${todo.tags}, newTags:${tags}`);
+        const newTodo = { ...todo, tags };
+        todos[index] = newTodo;
+      }
+      break;
+  }
+  return { ...state, todos };
+};
+
+const updateStatusReducer = (state: TodoAppState, action: UpdateStatusAction): TodoAppState => {
+  const todos = state.todos.slice(); // 复制
+  const todo = action.todo;
+  const index = todos.indexOf(todo);
+  const phases = todo.phases.slice();
+  phases.push({ from: new Date(), status: action.targetStatus });
+  const newTodo = { ...todo, phases };
+  todos[index] = newTodo;
+  return { ...state, todos };
+};
+
+const filterByStatusReducer = (state: TodoAppState, action: FilterByStatusAction): TodoAppState => {
+  return { ...state, filterStatus: action.filterStatus };
+};
+
+const rootReducer = (state: TodoAppState, action: TodoAction) => {
+  return {
+    todos: [
+      makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+      makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+      makeTodo("学习 CSS")
+    ],
+    filterStatus: null
+  };
+};
+
 const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
   if ((action.type as string) === __init_action_type) {
-    return {
-      todos: [
-        makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-        makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-        makeTodo("学习 CSS")
-      ],
-      filterStatus: null
-    };
-  } else if (action.type === TodoActionType.FILTER_BY_STATUS) {
-    return { ...state, filterStatus: action.filterStatus };
-  } else {
-    const todos = state.todos.slice(); // 复制
-    const todo = action.todo;
-    switch (action.type) {
-      case TodoActionType.ADD:
-        todos.push(todo);
-        break;
-      case TodoActionType.REMOVE:
-        {
-          const index = todos.indexOf(todo);
-          todos.splice(index, 1);
-        }
-        break;
-      case TodoActionType.ADD_TAG:
-        {
-          const index = todos.indexOf(todo);
-          const tag_set = new Set(todo.tags);
-          tag_set.add(action.tag);
-          const tags = Array.from(tag_set);
-          const newTodo = { ...todo, tags };
-          todos[index] = newTodo;
-        }
-        break;
-      case TodoActionType.REMOVE_TAG:
-        {
-          const index = todos.indexOf(todo);
-          const tags = todo.tags.slice();
-          const tagIndex = todo.tags.indexOf(action.tag);
-          tags.splice(tagIndex, 1);
-          console.info(`oldTags:${todo.tags}, newTags:${tags}`);
-          const newTodo = { ...todo, tags };
-          todos[index] = newTodo;
-        }
-        break;
-      case TodoActionType.UPDATE_STATUS:
-        {
-          const index = todos.indexOf(todo);
-          const phases = todo.phases.slice();
-          phases.push({ from: new Date(), status: action.targetStatus });
-          const newTodo = { ...todo, phases };
-          todos[index] = newTodo;
-        }
-        break;
-    }
-    return { ...state, todos };
+    return rootReducer(state, action);
+  }
+  switch (action.type) {
+    case TodoActionType.ADD:
+    case TodoActionType.REMOVE:
+      return todoObjectReducer(state, action);
+    case TodoActionType.ADD_TAG:
+    case TodoActionType.REMOVE_TAG:
+      return todoTagReducer(state, action);
+    case TodoActionType.UPDATE_STATUS:
+      return updateStatusReducer(state, action);
+    case TodoActionType.FILTER_BY_STATUS:
+      return filterByStatusReducer(state, action);
   }
 });
 
