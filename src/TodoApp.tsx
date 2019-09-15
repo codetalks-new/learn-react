@@ -104,7 +104,7 @@ type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 type TodoAction = TodoObjectAction | TagAction | UpdateStatusAction | FilterByStatusAction;
 
 type StoreListener = () => void;
-
+type StoreDispatch = <T extends Action>(action: T) => void;
 interface State {}
 
 // redux
@@ -232,10 +232,6 @@ const StoreContext = React.createContext(todoStore);
 
 type StoreType = typeof todoStore;
 
-export interface TodoItemProps {
-  todo: Todo;
-}
-
 // Action Creator
 // {type:TodoActionType, todo:Todo,tag:string}
 // {todo:Todo,tag:string}
@@ -259,8 +255,51 @@ class Actions {
   });
 }
 
-class TodoItem extends Component<TodoItemProps> {
-  static contextType = StoreContext;
+interface TodoItemProps {
+  todo: Todo;
+}
+
+const mapDispatchToTodoItemProps = (dispatch: StoreDispatch, ownProps: TodoItemProps) => {
+  const todo = ownProps.todo;
+  return {
+    removeTodo: () => dispatch(Actions.removeTodo({ todo })),
+    addTag: (tag: string) => dispatch(Actions.addTag({ tag, todo })),
+    removeTag: (tag: string) => dispatch(Actions.removeTag({ tag, todo })),
+    updateStatus: (targetStatus: Status) => dispatch(Actions.updateStatus({ todo, targetStatus }))
+  };
+};
+
+type MapStateToProps = (state: any, props: any) => any;
+type MapToDispatchProps = (state: any, props: any) => any;
+
+const connect = (
+  mapStateToProps: MapStateToProps | null,
+  mapDispatchToProps: MapToDispatchProps | null
+) => {
+  return (WrappedComponent: typeof Component) => {
+    return class extends Component<any> {
+      render() {
+        const { getState, dispatch } = todoStore;
+        const stateProps = mapStateToProps ? mapStateToProps(getState(), this.props) : {};
+        const dispatchProps = mapDispatchToProps ? mapDispatchToProps(dispatch, this.props) : {};
+        return <WrappedComponent {...this.props} {...stateProps} {...dispatchProps} />;
+      }
+      private unsubscribe: Function | undefined;
+      componentDidMount() {
+        this.unsubscribe = todoStore.subscribe(() => {
+          this.forceUpdate();
+        });
+      }
+      componentWillUnmount() {
+        this.unsubscribe && this.unsubscribe();
+      }
+    };
+  };
+};
+
+type TodoItemDispatchProps = ReturnType<typeof mapDispatchToTodoItemProps>;
+
+class RawTodoItem extends Component<TodoItemProps & TodoItemDispatchProps> {
   state = {
     showTagSelect: false
   };
@@ -272,31 +311,20 @@ class TodoItem extends Component<TodoItemProps> {
   onSelectTag = (e: ChangeEvent<HTMLSelectElement>) => {
     const tag = e.target.value;
     if (tag) {
-      const todo = this.props.todo;
-      const { dispatch } = this.context as StoreType;
-      dispatch(Actions.addTag({ todo, tag }));
+      this.props.addTag(tag);
     }
     this.toggleTags();
   };
 
   removeTag = (tag: string) => {
-    const todo = this.props.todo;
-    const { dispatch } = this.context as StoreType;
-    dispatch(Actions.removeTag({ todo, tag }));
+    this.props.removeTag(tag);
   };
 
   removeTodo = () => {
-    const { dispatch } = this.context as StoreType;
-    const { todo } = this.props;
-    dispatch(Actions.removeTodo({ todo }));
+    this.props.removeTodo();
   };
 
   renderActions = (status: Status) => {
-    const todo = this.props.todo;
-    const { dispatch } = this.context as StoreType;
-    const updateStatus = (targetStatus: Status) => {
-      dispatch(Actions.updateStatus({ todo, targetStatus }));
-    };
     // status -> action -> targetStatus
 
     const statusTransitionMap = {
@@ -309,7 +337,7 @@ class TodoItem extends Component<TodoItemProps> {
     const actionStatusArray: [string, Status][] = (statusTransitionMap as any)[status];
     if (actionStatusArray) {
       return actionStatusArray.map(([action, targetStatus]) => (
-        <button key={action} onClick={() => updateStatus(targetStatus)}>
+        <button key={action} onClick={() => this.props.updateStatus(targetStatus)}>
           {action}
         </button>
       ));
@@ -367,6 +395,11 @@ class TodoItem extends Component<TodoItemProps> {
     );
   }
 }
+
+let TodoItem = connect(
+  null,
+  mapDispatchToTodoItemProps
+)(RawTodoItem);
 
 export interface ToDoListProps {}
 
