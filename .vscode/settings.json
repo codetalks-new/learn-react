@@ -1,4 +1,8 @@
 {
-  "importMagic.maxColumns": 80,
-  "editor.cursorWidth": 1
+  "importMagic.maxColumns": 100,
+  "editor.cursorWidth": 1,
+  "vim.textwidth": 100,
+  "prettier.printWidth": 100,
+  "yaml.format.printWidth": 100,
+  "editor.wordWrapColumn": 100
 }

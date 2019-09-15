@@ -40,13 +40,8 @@ interface Todo {
   phases: Phase[];
 }
 
-const makeTodo = (
-  name: string,
-  tags: string[] = [],
-  phases: Phase[] = []
-): Todo => {
-  let phases_fallback =
-    phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
+const makeTodo = (name: string, tags: string[] = [], phases: Phase[] = []): Todo => {
+  let phases_fallback = phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
   return {
     name,
     tags,
@@ -76,32 +71,37 @@ enum TodoActionType {
   UPDATE_STATUS = "update_status",
   FILTER_BY_STATUS = "filter_by_status"
 }
+
+type ActionCreator<T extends Action> = (payload: Omit<T, "type">) => T;
 // payload
 interface TodoObjectAction extends Action {
   type: TodoActionType.ADD | TodoActionType.REMOVE;
   todo: Todo;
 }
 
+type TodoObjectActionCreator = ActionCreator<TodoObjectAction>;
+
 interface TagAction extends Action {
   type: TodoActionType.ADD_TAG | TodoActionType.REMOVE_TAG;
   todo: Todo;
   tag: string;
 }
+type TagActionCreator = ActionCreator<TagAction>;
+
 interface UpdateStatusAction extends Action {
   type: TodoActionType.UPDATE_STATUS;
   todo: Todo;
   targetStatus: Status;
 }
+type UpdateStatusActionCreator = ActionCreator<UpdateStatusAction>;
+
 interface FilterByStatusAction extends Action {
   type: TodoActionType.FILTER_BY_STATUS;
   filterStatus: Status | null | undefined;
 }
+type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 
-type TodoAction =
-  | TodoObjectAction
-  | TagAction
-  | UpdateStatusAction
-  | FilterByStatusAction;
+type TodoAction = TodoObjectAction | TagAction | UpdateStatusAction | FilterByStatusAction;
 
 type StoreListener = () => void;
 
@@ -110,9 +110,7 @@ interface State {}
 // redux
 
 const __init_action_type = "INIT_STORE";
-function createStore<T extends Action, S extends State>(
-  reducer: (state: S, action: T) => S
-) {
+function createStore<T extends Action, S extends State>(reducer: (state: S, action: T) => S) {
   const listeners: StoreListener[] = [];
   let state: S = {} as any;
   const getState = () => {
@@ -208,6 +206,29 @@ export interface TodoItemProps {
   todo: Todo;
 }
 
+// Action Creator
+// {type:TodoActionType, todo:Todo,tag:string}
+// {todo:Todo,tag:string}
+// Ommit, Pick
+
+class Actions {
+  static addTag: TagActionCreator = payload => ({ ...payload, type: TodoActionType.ADD_TAG });
+  static removeTag: TagActionCreator = payload => ({ ...payload, type: TodoActionType.REMOVE_TAG });
+  static addTodo: TodoObjectActionCreator = payload => ({ ...payload, type: TodoActionType.ADD });
+  static removeTodo: TodoObjectActionCreator = payload => ({
+    ...payload,
+    type: TodoActionType.REMOVE
+  });
+  static updateStatus: UpdateStatusActionCreator = payload => ({
+    ...payload,
+    type: TodoActionType.UPDATE_STATUS
+  });
+  static filterByStatus: FilterByStatusActionCreator = payload => ({
+    ...payload,
+    type: TodoActionType.FILTER_BY_STATUS
+  });
+}
+
 class TodoItem extends Component<TodoItemProps> {
   static contextType = StoreContext;
   state = {
@@ -223,7 +244,7 @@ class TodoItem extends Component<TodoItemProps> {
     if (tag) {
       const todo = this.props.todo;
       const { dispatch } = this.context as StoreType;
-      dispatch({ type: TodoActionType.ADD_TAG, todo, tag });
+      dispatch(Actions.addTag({ todo, tag }));
     }
     this.toggleTags();
   };
@@ -231,41 +252,31 @@ class TodoItem extends Component<TodoItemProps> {
   removeTag = (tag: string) => {
     const todo = this.props.todo;
     const { dispatch } = this.context as StoreType;
-    dispatch({ type: TodoActionType.REMOVE_TAG, todo, tag });
+    dispatch(Actions.removeTag({ todo, tag }));
   };
 
   removeTodo = () => {
     const { dispatch } = this.context as StoreType;
-    dispatch({ type: TodoActionType.REMOVE, todo: this.props.todo });
+    const { todo } = this.props;
+    dispatch(Actions.removeTodo({ todo }));
   };
 
   renderActions = (status: Status) => {
     const todo = this.props.todo;
     const { dispatch } = this.context as StoreType;
     const updateStatus = (targetStatus: Status) => {
-      const action: TodoAction = {
-        type: TodoActionType.UPDATE_STATUS,
-        todo,
-        targetStatus
-      };
-      dispatch(action);
+      dispatch(Actions.updateStatus({ todo, targetStatus }));
     };
     // status -> action -> targetStatus
 
     const statusTransitionMap = {
       [Status.CREATED]: [["开始处理", Status.DOING], ["删除", Status.DELETED]],
-      [Status.DOING]: [
-        ["完成", Status.FINISHED],
-        ["暂停", Status.PAUSE],
-        ["删除", Status.DELETED]
-      ],
+      [Status.DOING]: [["完成", Status.FINISHED], ["暂停", Status.PAUSE], ["删除", Status.DELETED]],
       [Status.PAUSE]: [["开始处理", Status.DOING], ["删除", Status.DELETED]],
       [Status.FINISHED]: [["删除", Status.DELETED]]
     };
 
-    const actionStatusArray: [string, Status][] = (statusTransitionMap as any)[
-      status
-    ];
+    const actionStatusArray: [string, Status][] = (statusTransitionMap as any)[status];
     if (actionStatusArray) {
       return actionStatusArray.map(([action, targetStatus]) => (
         <button key={action} onClick={() => updateStatus(targetStatus)}>
@@ -297,10 +308,7 @@ class TodoItem extends Component<TodoItemProps> {
       tags.push(
         <span className="todo-tag" key={tag}>
           {tag}
-          <button
-            className="tag-remove-button"
-            onClick={() => this.removeTag(tag)}
-          >
+          <button className="tag-remove-button" onClick={() => this.removeTag(tag)}>
             X
           </button>
         </span>
@@ -373,7 +381,7 @@ class TodoForm extends Component<TodoFormProps> {
     e.preventDefault();
     const todo = makeTodo(this.state.name);
     const { dispatch } = this.context as StoreType;
-    dispatch({ type: TodoActionType.ADD, todo: todo });
+    dispatch(Actions.addTodo({ todo: todo }));
     this.setState({
       name: ""
     });
@@ -391,12 +399,7 @@ class TodoForm extends Component<TodoFormProps> {
           onChange={this.handleChange}
           autoComplete="off"
         />
-        <input
-          type="button"
-          value="添加"
-          onClick={this.submitForm}
-          style={{ marginLeft: "8px" }}
-        />
+        <input type="button" value="添加" onClick={this.submitForm} style={{ marginLeft: "8px" }} />
       </form>
     );
   }
@@ -409,7 +412,7 @@ class TodoFilter extends Component {
     const state = getState();
 
     const filterByStatus = (status: Status | null) => {
-      dispatch({ type: TodoActionType.FILTER_BY_STATUS, filterStatus: status });
+      dispatch(Actions.filterByStatus({ filterStatus: status }));
     };
     const statusKeys = Object.keys(Status);
     const buttons = statusKeys.map(key => {
@@ -429,11 +432,7 @@ class TodoFilter extends Component {
     return (
       <div>
         <h3>按状态筛选:</h3>
-        <button
-          key="all"
-          onClick={() => filterByStatus(null)}
-          className={showAll ? "active" : ""}
-        >
+        <button key="all" onClick={() => filterByStatus(null)} className={showAll ? "active" : ""}>
           所有
         </button>
         {buttons}
