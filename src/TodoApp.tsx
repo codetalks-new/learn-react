@@ -104,7 +104,6 @@ type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 type TodoAction = TodoObjectAction | TagAction | UpdateStatusAction | FilterByStatusAction;
 
 type StoreListener = () => void;
-type StoreDispatch = <T extends Action>(action: T) => void;
 interface State {}
 
 // redux
@@ -259,7 +258,7 @@ interface TodoItemProps {
   todo: Todo;
 }
 
-const mapDispatchToTodoItemProps = (dispatch: StoreDispatch, ownProps: TodoItemProps) => {
+const mapDispatchToTodoItemProps = (dispatch: (action: any) => void, ownProps: TodoItemProps) => {
   const todo = ownProps.todo;
   return {
     removeTodo: () => dispatch(Actions.removeTodo({ todo })),
@@ -269,8 +268,8 @@ const mapDispatchToTodoItemProps = (dispatch: StoreDispatch, ownProps: TodoItemP
   };
 };
 
-type MapStateToProps = (state: any, props: any) => any;
-type MapToDispatchProps = (state: any, props: any) => any;
+type MapStateToProps = (state: TodoAppState, props: any) => any;
+type MapToDispatchProps = (dispatch: (action: any) => void, props: any) => any;
 
 const connect = (
   mapStateToProps: MapStateToProps | null,
@@ -467,20 +466,28 @@ class TodoForm extends Component<TodoFormProps> {
     );
   }
 }
+const mapStateToTodoFilterProps: MapStateToProps = (state, ownProps) => ({
+  filterStatus: state.filterStatus
+});
 
-class TodoFilter extends Component {
-  static contextType = StoreContext;
+const mapDispatchToTodoFilterProps: MapToDispatchProps = (dispatch, ownProps) => {
+  return {
+    filterByStatus: (filterStatus: Status | null) =>
+      dispatch(Actions.filterByStatus({ filterStatus }))
+  };
+};
+
+class RawTodoFilter extends Component<
+  ReturnType<typeof mapStateToTodoFilterProps> & ReturnType<typeof mapDispatchToTodoFilterProps>
+> {
   render() {
-    const { dispatch, getState } = this.context as StoreType;
-    const state = getState();
-
     const filterByStatus = (status: Status | null) => {
-      dispatch(Actions.filterByStatus({ filterStatus: status }));
+      this.props.filterByStatus(status);
     };
     const statusKeys = Object.keys(Status);
     const buttons = statusKeys.map(key => {
       const status = (Status as any)[key];
-      const active = state.filterStatus === status;
+      const active = this.props.filterStatus === status;
       return (
         <button
           key={status}
@@ -491,7 +498,7 @@ class TodoFilter extends Component {
         </button>
       );
     });
-    const showAll = !state.filterStatus;
+    const showAll = !this.props.filterStatus;
     return (
       <div>
         <h3>按状态筛选:</h3>
@@ -503,6 +510,11 @@ class TodoFilter extends Component {
     );
   }
 }
+
+const TodoFilter = connect(
+  mapStateToTodoFilterProps,
+  mapDispatchToTodoFilterProps
+)(RawTodoFilter);
 
 export class TodoApp extends Component {
   unsubscribe: (() => void) | undefined;
