@@ -108,11 +108,15 @@ type StoreListener = () => void;
 interface State {}
 
 // redux
+type Reducer<S, T> = (state: S, action: T) => S;
 
 const __init_action_type = "INIT_STORE";
-function createStore<T extends Action, S extends State>(reducer: (state: S, action: T) => S) {
+function createStore<T extends Action, S extends State>(
+  reducer: (state: S, action: T) => S,
+  preloadState?: S
+) {
   const listeners: StoreListener[] = [];
-  let state: S = {} as any;
+  let state: S = preloadState || ({} as any);
   const getState = () => {
     return state;
   };
@@ -138,65 +142,103 @@ interface TodoAppState extends State {
   filterStatus: Status | null | undefined;
 }
 
-const todoStore = createStore<TodoAction, TodoAppState>((state, action) => {
-  if ((action.type as string) === __init_action_type) {
-    return {
-      todos: [
-        makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-        makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-        makeTodo("学习 CSS")
-      ],
-      filterStatus: null
-    };
-  } else if (action.type === TodoActionType.FILTER_BY_STATUS) {
-    return { ...state, filterStatus: action.filterStatus };
-  } else {
-    const todos = state.todos.slice(); // 复制
-    const todo = action.todo;
-    switch (action.type) {
-      case TodoActionType.ADD:
-        todos.push(todo);
-        break;
-      case TodoActionType.REMOVE:
-        {
-          const index = todos.indexOf(todo);
-          todos.splice(index, 1);
-        }
-        break;
-      case TodoActionType.ADD_TAG:
-        {
-          const index = todos.indexOf(todo);
-          const tag_set = new Set(todo.tags);
-          tag_set.add(action.tag);
-          const tags = Array.from(tag_set);
-          const newTodo = { ...todo, tags };
-          todos[index] = newTodo;
-        }
-        break;
-      case TodoActionType.REMOVE_TAG:
-        {
-          const index = todos.indexOf(todo);
-          const tags = todo.tags.slice();
-          const tagIndex = todo.tags.indexOf(action.tag);
-          tags.splice(tagIndex, 1);
-          console.info(`oldTags:${todo.tags}, newTags:${tags}`);
-          const newTodo = { ...todo, tags };
-          todos[index] = newTodo;
-        }
-        break;
-      case TodoActionType.UPDATE_STATUS:
-        {
-          const index = todos.indexOf(todo);
-          const phases = todo.phases.slice();
-          phases.push({ from: new Date(), status: action.targetStatus });
-          const newTodo = { ...todo, phases };
-          todos[index] = newTodo;
-        }
-        break;
-    }
-    return { ...state, todos };
+type TodoAppReducer<T = TodoAction> = Reducer<TodoAppState, T>;
+
+const makePreloadState = () => {
+  return {
+    todos: [
+      makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+      makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+      makeTodo("学习 CSS")
+    ],
+    filterStatus: null
+  };
+};
+
+const filterByStatusReducer: TodoAppReducer<FilterByStatusAction> = (state, action) => {
+  return { ...state, filterStatus: action.filterStatus };
+};
+const todoReducer: TodoAppReducer<TodoObjectAction | TagAction | UpdateStatusAction> = (
+  state,
+  action
+) => {
+  const todos = state.todos.slice(); // 复制
+  const todo = action.todo;
+  switch (action.type) {
+    case TodoActionType.ADD:
+      todos.push(todo);
+      break;
+    case TodoActionType.REMOVE:
+      {
+        const index = todos.indexOf(todo);
+        todos.splice(index, 1);
+      }
+      break;
+    case TodoActionType.ADD_TAG:
+      {
+        const index = todos.indexOf(todo);
+        const tag_set = new Set(todo.tags);
+        tag_set.add(action.tag);
+        const tags = Array.from(tag_set);
+        const newTodo = { ...todo, tags };
+        todos[index] = newTodo;
+      }
+      break;
+    case TodoActionType.REMOVE_TAG:
+      {
+        const index = todos.indexOf(todo);
+        const tags = todo.tags.slice();
+        const tagIndex = todo.tags.indexOf(action.tag);
+        tags.splice(tagIndex, 1);
+        console.info(`oldTags:${todo.tags}, newTags:${tags}`);
+        const newTodo = { ...todo, tags };
+        todos[index] = newTodo;
+      }
+      break;
+    case TodoActionType.UPDATE_STATUS:
+      {
+        const index = todos.indexOf(todo);
+        const phases = todo.phases.slice();
+        phases.push({ from: new Date(), status: action.targetStatus });
+        const newTodo = { ...todo, phases };
+        todos[index] = newTodo;
+      }
+      break;
   }
+  return { ...state, todos };
+};
+
+type ReducerKeys = keyof TodoAppState;
+type Reducers = {
+  [K in ReducerKeys]: TodoAppReducer<any>;
+};
+
+const combineReducers = (reducers: Reducers): TodoAppReducer => {
+  const combinedReducer: TodoAppReducer = (state, action) => {
+    const keys = Object.keys(reducers);
+    let newState = state;
+    for (const key of keys) {
+      const reducer = (reducers as any)[key];
+      newState = reducer(newState, action);
+    }
+    return newState;
+  };
+  return combinedReducer;
+};
+// const rootReducer: TodoAppReducer = (state, action) => {
+//   if (action.type === TodoActionType.FILTER_BY_STATUS) {
+//     return filterByStatusReducer(state, action);
+//   } else {
+//     return todoReducer(state, action);
+//   }
+// };
+
+const rootReducer = combineReducers({
+  filterStatus: filterByStatusReducer,
+  todos: todoReducer
 });
+
+const todoStore = createStore<TodoAction, TodoAppState>(rootReducer, makePreloadState());
 
 const StoreContext = React.createContext(todoStore);
 
