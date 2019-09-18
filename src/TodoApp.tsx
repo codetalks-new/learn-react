@@ -4,6 +4,7 @@ import "./TodoApp.css";
 interface Action {
   type: string; //操作类型
 }
+type AsyncAction = (dispatch: Function, state: any) => any;
 
 enum BuiltinTag {
   IMPORTANT = "重要",
@@ -69,7 +70,10 @@ enum TodoActionType {
   ADD = "add",
   REMOVE = "remove",
   UPDATE_STATUS = "update_status",
-  FILTER_BY_STATUS = "filter_by_status"
+  FILTER_BY_STATUS = "filter_by_status",
+  LOAD_TODOS = "load_todos",
+  LOAD_TODOS_SUCCESS = "load_todos_success",
+  LOAD_TODOS_FAILURE = "load_todos_failure"
 }
 
 type ActionCreator<T extends Action> = (payload: Omit<T, "type">) => T;
@@ -77,6 +81,11 @@ type ActionCreator<T extends Action> = (payload: Omit<T, "type">) => T;
 interface TodoObjectAction extends Action {
   type: TodoActionType.ADD | TodoActionType.REMOVE;
   todo: Todo;
+}
+
+interface TodoListAction extends Action {
+  type: TodoActionType.LOAD_TODOS_SUCCESS;
+  todos: Todo[];
 }
 
 type TodoObjectActionCreator = ActionCreator<TodoObjectAction>;
@@ -93,6 +102,11 @@ interface UpdateStatusAction extends Action {
   todo: Todo;
   targetStatus: Status;
 }
+
+interface EmptyAction extends Action {}
+type EmptyActionCreator = () => EmptyAction;
+type AsyncActionCreator = () => AsyncAction;
+
 type UpdateStatusActionCreator = ActionCreator<UpdateStatusAction>;
 
 interface FilterByStatusAction extends Action {
@@ -101,7 +115,12 @@ interface FilterByStatusAction extends Action {
 }
 type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 
-type TodoAction = TodoObjectAction | TagAction | UpdateStatusAction | FilterByStatusAction;
+type TodoAction =
+  | TodoObjectAction
+  | TagAction
+  | UpdateStatusAction
+  | FilterByStatusAction
+  | EmptyAction;
 
 type StoreListener = () => void;
 
@@ -128,14 +147,31 @@ function createStore<T extends Action, S extends State>(
     };
     return unsubscribe;
   };
-  const dispatch = (action: T) => {
-    state = reducer(state, action);
-    // midllware
-    listeners.forEach(listener => listener());
+  const dispatch = (action: T | AsyncAction) => {
+    if (typeof action === "function") {
+      action(dispatch, state);
+    } else {
+      state = reducer(state, action);
+      // midllware
+      listeners.forEach(listener => listener());
+    }
   };
   dispatch({ type: __init_action_type } as T);
   return { dispatch, subscribe, getState };
 }
+
+const loadTodos = () => {
+  return new Promise<Todo[]>(resolve => {
+    setTimeout(() => {
+      const todos = [
+        makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+        makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+        makeTodo("学习 CSS")
+      ];
+      resolve(todos);
+    }, 500);
+  });
+};
 
 interface TodoAppState extends State {
   todos: Todo[];
@@ -146,11 +182,7 @@ type TodoAppReducer<T = TodoAction> = Reducer<TodoAppState, T>;
 
 const makePreloadState = () => {
   return {
-    todos: [
-      makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-      makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-      makeTodo("学习 CSS")
-    ],
+    todos: [],
     filterStatus: null
   };
 };
@@ -158,10 +190,13 @@ const makePreloadState = () => {
 const filterByStatusReducer: TodoAppReducer<FilterByStatusAction> = (state, action) => {
   return { ...state, filterStatus: action.filterStatus };
 };
-const todoReducer: TodoAppReducer<TodoObjectAction | TagAction | UpdateStatusAction> = (
-  state,
-  action
-) => {
+
+const todoReducer: TodoAppReducer<
+  TodoObjectAction | TagAction | UpdateStatusAction | TodoListAction
+> = (state, action) => {
+  if (action.type === TodoActionType.LOAD_TODOS_SUCCESS) {
+    return { ...state, todos: action.todos };
+  }
   const todos = state.todos.slice(); // 复制
   const todo = action.todo;
   switch (action.type) {
@@ -269,6 +304,19 @@ class Actions {
     ...payload,
     type: TodoActionType.FILTER_BY_STATUS
   });
+
+  static loadTodosSuccess: ActionCreator<TodoListAction> = payload => ({
+    ...payload,
+    type: TodoActionType.LOAD_TODOS_SUCCESS
+  });
+
+  static loadTodos: AsyncActionCreator = () => (dispatch, state) => {
+    loadTodos()
+      .then(todos => {
+        dispatch(Actions.loadTodosSuccess({ todos }));
+      })
+      .catch(error => {});
+  };
 }
 
 class TodoItem extends Component<TodoItemProps> {
@@ -490,6 +538,7 @@ export class TodoApp extends Component {
     this.unsubscribe = todoStore.subscribe(() => {
       this.setState(todoStore.getState());
     });
+    todoStore.dispatch(Actions.loadTodos());
   }
 
   componentWillUnmount() {
