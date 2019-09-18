@@ -5,6 +5,8 @@ interface Action {
   type: string; //操作类型
 }
 
+type AsyncAction = (dispatch: Function, state: any) => void;
+
 enum BuiltinTag {
   IMPORTANT = "重要",
   NOTIMPORTANT = "不重要",
@@ -69,14 +71,24 @@ enum TodoActionType {
   ADD = "add",
   REMOVE = "remove",
   UPDATE_STATUS = "update_status",
-  FILTER_BY_STATUS = "filter_by_status"
+  FILTER_BY_STATUS = "filter_by_status",
+  LOAD_TODOS_SUCCESS = "load_todos_success",
+  LOAD_TODOS_REQUEST = "load_todos_request"
 }
 
 type ActionCreator<T extends Action> = (payload: Omit<T, "type">) => T;
+
+interface EmptyAction extends Action {}
+
 // payload
 interface TodoObjectAction extends Action {
   type: TodoActionType.ADD | TodoActionType.REMOVE;
   todo: Todo;
+}
+
+interface TodoListAction extends Action {
+  type: TodoActionType.LOAD_TODOS_SUCCESS;
+  todos: Todo[];
 }
 
 type TodoObjectActionCreator = ActionCreator<TodoObjectAction>;
@@ -101,7 +113,13 @@ interface FilterByStatusAction extends Action {
 }
 type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 
-type TodoAction = TodoObjectAction | TagAction | UpdateStatusAction | FilterByStatusAction;
+type TodoAction =
+  | TodoObjectAction
+  | TagAction
+  | UpdateStatusAction
+  | FilterByStatusAction
+  | TodoListAction
+  | EmptyAction;
 
 type StoreListener = () => void;
 
@@ -128,10 +146,14 @@ function createStore<T extends Action, S extends State>(
     };
     return unsubscribe;
   };
-  const dispatch = (action: T) => {
-    state = reducer(state, action);
-    // midllware
-    listeners.forEach(listener => listener());
+  const dispatch = (action: T | AsyncAction) => {
+    if (typeof action === "function") {
+      action(dispatch, state);
+    } else {
+      state = reducer(state, action);
+      // midllware
+      listeners.forEach(listener => listener());
+    }
   };
   dispatch({ type: __init_action_type } as T);
   return { dispatch, subscribe, getState };
@@ -140,28 +162,48 @@ function createStore<T extends Action, S extends State>(
 interface TodoAppState extends State {
   todos: Todo[];
   filterStatus: Status | null | undefined;
+  isLoading: boolean;
 }
 
 type TodoAppReducer<T = TodoAction> = Reducer<TodoAppState, T>;
 
+const loadTodos = () => {
+  return new Promise<Todo[]>(resolve => {
+    setTimeout(() => {
+      const todos = [
+        makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
+        makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
+        makeTodo("学习 CSS")
+      ];
+      resolve(todos);
+    }, 1000);
+  });
+};
+
 const makePreloadState = () => {
   return {
-    todos: [
-      makeTodo("学习 React", [BuiltinTag.IMPORTANT, BuiltinTag.URGENT]),
-      makeTodo("学习 TypeScript", [BuiltinTag.IMPORTANT]),
-      makeTodo("学习 CSS")
-    ],
-    filterStatus: null
+    todos: [],
+    filterStatus: null,
+    isLoading: false
   };
 };
+// redux
 
 const filterByStatusReducer: TodoAppReducer<FilterByStatusAction> = (state, action) => {
   return { ...state, filterStatus: action.filterStatus };
 };
-const todoReducer: TodoAppReducer<TodoObjectAction | TagAction | UpdateStatusAction> = (
-  state,
-  action
-) => {
+const isLoadingReducer: TodoAppReducer<EmptyAction> = (state, action) => {
+  if (action.type === TodoActionType.LOAD_TODOS_REQUEST) {
+    return { ...state, isLoading: true };
+  }
+  return state;
+};
+const todoReducer: TodoAppReducer<
+  TodoObjectAction | TagAction | UpdateStatusAction | TodoListAction
+> = (state, action) => {
+  if (action.type === TodoActionType.LOAD_TODOS_SUCCESS) {
+    return { ...state, todos: action.todos, isLoading: false };
+  }
   const todos = state.todos.slice(); // 复制
   const todo = action.todo;
   switch (action.type) {
@@ -235,7 +277,8 @@ const combineReducers = (reducers: Reducers): TodoAppReducer => {
 
 const rootReducer = combineReducers({
   filterStatus: filterByStatusReducer,
-  todos: todoReducer
+  todos: todoReducer,
+  isLoading: isLoadingReducer
 });
 
 const todoStore = createStore<TodoAction, TodoAppState>(rootReducer, makePreloadState());
@@ -269,6 +312,21 @@ class Actions {
     ...payload,
     type: TodoActionType.FILTER_BY_STATUS
   });
+  static loadTodosSuccess: ActionCreator<TodoListAction> = payload => ({
+    ...payload,
+    type: TodoActionType.LOAD_TODOS_SUCCESS
+  });
+  static loadTodosRequest = () => ({ type: TodoActionType.LOAD_TODOS_REQUEST });
+
+  static loadTodos = () => {
+    const call: AsyncAction = (dispatch, state) => {
+      dispatch(Actions.loadTodosRequest());
+      loadTodos().then(todos => {
+        dispatch(Actions.loadTodosSuccess({ todos }));
+      });
+    };
+    return call;
+  };
 }
 
 class TodoItem extends Component<TodoItemProps> {
@@ -490,6 +548,9 @@ export class TodoApp extends Component {
     this.unsubscribe = todoStore.subscribe(() => {
       this.setState(todoStore.getState());
     });
+    // Vue#mounted isLoading
+    // Redux-thunk  redux-saga yield generator
+    todoStore.dispatch(Actions.loadTodos());
   }
 
   componentWillUnmount() {
@@ -497,14 +558,19 @@ export class TodoApp extends Component {
   }
 
   render() {
+    const state = todoStore.getState();
     return (
       <div>
         <StoreContext.Provider value={todoStore}>
           <TodoFilter />
-          <table>
-            <TodoHeader />
-            <TodoList />
-          </table>
+          {state.isLoading ? (
+            <span>加载中...</span>
+          ) : (
+            <table>
+              <TodoHeader />
+              <TodoList />
+            </table>
+          )}
           <TodoForm />
         </StoreContext.Provider>
       </div>
