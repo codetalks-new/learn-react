@@ -1,17 +1,26 @@
 import React from "react";
 import "./App.css";
+import { Layout } from "antd";
 import { TodoApp } from "./TodoApp";
+
+const { Header, Footer, Content } = Layout;
 
 const App: React.FC = () => {
   return (
-    <div className="App">
-      <header className="App-header" style={{ float: "right" }}>
-        <h3>欢迎来到代码会说话的编程实验室</h3>
-        <p>[React &TypeScript](9) Redux 从同步到异步(函数式的代价)</p>
-        <caption> (TS不仅帮你声明类型,还提供创建类型的助手 ) </caption>
+    <Layout>
+      <Header>
+        <h1 className="header-title">
+          欢来到 <i>代码会说话</i> 的编程实验室
+        </h1>
+      </Header>
+      <Content>
+        <h2>[React &TypeScript](12) 集成 Ant Design 美化UI</h2>
         <TodoApp />
-      </header>
-    </div>
+      </Content>
+      <Footer>
+        <footer> TS不仅帮你声明类型,还提供创建类型的助手 </footer>
+      </Footer>
+    </Layout>
   );
 };
 

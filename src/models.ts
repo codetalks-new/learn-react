@@ -1,3 +1,5 @@
+import { BaseButtonProps } from "antd/lib/button/button";
+
 export enum BuiltinTag {
   IMPORTANT = "重要",
   NOTIMPORTANT = "不重要",
@@ -54,16 +56,18 @@ export const statusTransitionMap: Map<Status, [string, Status][]> = new Map([
   [Status.FINISHED, [["删除", Status.DELETED]]]
 ]);
 
-export const statusToButtonType = (status: Status) => {
+export const statusToButtonProps = (status: Status): BaseButtonProps => {
   switch (status) {
     case Status.DELETED:
-      return "danger";
+      return { type: "danger", shape: "circle", icon: "delete" };
     case Status.FINISHED:
-      return "primary";
+      return { type: "primary", shape: "circle", icon: "check-circle" };
     case Status.PAUSE:
-      return "dashed";
+      return { type: "dashed", shape: "circle", icon: "pause-circle" };
+    case Status.DOING:
+      return { type: "primary", shape: "circle", icon: "play-circle" };
     default:
-      return "default";
+      return { type: "default", shape: "circle" };
   }
 };
 
