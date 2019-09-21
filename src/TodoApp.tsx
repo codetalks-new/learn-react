@@ -4,9 +4,9 @@ import { todoStore, StoreContext, TodoAppState } from "./store";
 import "./TodoApp.css";
 import { Actions } from "./actions";
 import { TodoFilter } from "./components/TodoFilter";
-import { TodoForm } from "./components/TodoForm";
+import { CreateTodoForm, UpdateTodoForm } from "./components/TodoForm";
 import { Status, Todo, BuiltinTag, Phase, tagToColor, TodoX, statusToButtonProps } from "./models";
-import { Spin, Table, Tag, Button, Menu, Dropdown, Icon } from "antd";
+import { Spin, Table, Tag, Button, Menu, Dropdown, Icon, Modal } from "antd";
 import { ColumnProps } from "antd/lib/table";
 
 function mapStateToTodoFilterProps(state: TodoAppState, ownProps: any) {
@@ -50,12 +50,25 @@ const ConnectedTodoFilter = connect(
   mapDispatchToTodoFilterProps
 )(TodoFilter);
 
-export class TodoApp extends Component {
+interface TodoAppComponentState {
+  showCreateForm: boolean;
+  showUpdateForm: boolean;
+  currentUpdateTodo: Todo | null;
+  todos: Todo[];
+}
+
+export class TodoApp extends Component<{}, TodoAppComponentState> {
+  state = {
+    showCreateForm: false,
+    showUpdateForm: false,
+    currentUpdateTodo: null,
+    todos: []
+  };
   unsubscribe: (() => void) | undefined;
 
   componentDidMount() {
     this.unsubscribe = todoStore.subscribe(() => {
-      this.setState(todoStore.getState());
+      this.setState({ todos: todoStore.getState().todos });
     });
     // Vue#mounted isLoading
     // Redux-thunk  redux-saga yield generator
@@ -113,6 +126,9 @@ export class TodoApp extends Component {
     const normalActions = actions.filter(action => action[1] !== Status.DELETED);
     const moreActionMenu = (
       <Menu>
+        <Menu.Item key="update" onClick={() => this.showUpdateForm(todo)}>
+          编辑
+        </Menu.Item>
         {moreActions.map(([title, targetStatus]) => (
           <Menu.Item key={targetStatus}>
             <a href="#!" onClick={() => this.updateStatus(todo, targetStatus)}>
@@ -132,7 +148,7 @@ export class TodoApp extends Component {
 
     return (
       <>
-        {buttons}
+        {buttons}{" "}
         <Dropdown overlay={moreActionMenu} trigger={["click"]}>
           <a className="ant-dropdown-link" href="#">
             更多
@@ -144,17 +160,68 @@ export class TodoApp extends Component {
   };
 
   updateStatus = (todo: Todo, targetStatus: Status) => {
-    todoStore.dispatch(Actions.updateStatus({ todo, targetStatus }));
+    if (targetStatus === Status.DELETED) {
+      this.confirmDelete(todo);
+    } else {
+      todoStore.dispatch(Actions.updateStatus({ todo, targetStatus }));
+    }
+  };
+
+  confirmDelete = (todo: Todo) => {
+    Modal.confirm({
+      title: "确定要删除此办事项?",
+      content: todo.name,
+      onCancel() {},
+      onOk: () => todoStore.dispatch(Actions.updateStatus({ todo, targetStatus: Status.DELETED }))
+    });
+  };
+
+  showCreateForm = () => {
+    this.setState({
+      showCreateForm: true
+    });
+  };
+
+  hideCreateForm = () => {
+    this.setState({
+      showCreateForm: false
+    });
+  };
+
+  showUpdateForm = (todo: Todo) => {
+    this.setState({
+      showUpdateForm: true,
+      currentUpdateTodo: todo
+    });
+  };
+
+  hideUpdateForm = () => {
+    this.setState({
+      showUpdateForm: false,
+      currentUpdateTodo: null
+    });
   };
 
   render() {
     const state = todoStore.getState();
+    const { showCreateForm, showUpdateForm, currentUpdateTodo } = this.state;
     return (
       <div>
         <StoreContext.Provider value={todoStore}>
+          <Button icon="plus" type="primary" onClick={this.showCreateForm}>
+            新建
+          </Button>
           <ConnectedTodoFilter />
           <Table dataSource={state.todos} columns={this.columns} rowKey="name" />
-          <TodoForm />
+
+          <CreateTodoForm visible={showCreateForm} onHideModal={this.hideCreateForm} />
+          {currentUpdateTodo && (
+            <UpdateTodoForm
+              visible={showUpdateForm}
+              onHideModal={this.hideUpdateForm}
+              todo={currentUpdateTodo!}
+            />
+          )}
         </StoreContext.Provider>
       </div>
     );

@@ -1,72 +1,144 @@
 import React, { Component, ChangeEvent, FormEvent } from "react";
 import { StoreContext, StoreType } from "../store";
-import { makeTodo } from "../models";
+import { makeTodo, BuiltinTag, Todo, makeBuiltinTags, TodoX } from "../models";
 import { Actions } from "../actions";
-import { Form, Card, Input, Button } from "antd";
+import { Form, Card, Input, Button, Modal, Checkbox } from "antd";
 import { FormComponentProps } from "antd/lib/form";
 
-export interface TodoFormProps extends FormComponentProps {}
+export interface CreateTodoFormProps extends FormComponentProps {
+  visible: boolean;
+  onHideModal: () => void;
+}
 
 const hasErrors = (fieldErros: any) => Object.keys(fieldErros).some(key => fieldErros[key]);
 
-class RawTodoForm extends Component<TodoFormProps> {
+class CreateForm extends Component<CreateTodoFormProps> {
   static contextType = StoreContext;
-  readonly state = {
-    name: ""
-  };
   componentDidMount() {
     // 开始时禁用提交按钮
     this.props.form.validateFields();
   }
 
-  submitForm = (e: FormEvent) => {
-    e.preventDefault();
-    const { validateFields, setFieldsValue } = this.props.form;
+  onOk = () => {
+    const { validateFields, resetFields } = this.props.form;
     validateFields((err, values) => {
       if (err) {
         console.error("表单验证错误");
         return;
       }
       console.info("表单值:", values);
-      this.addNewTodo(values["name"]);
-      setFieldsValue({ name: "" });
-      validateFields();
+      this.addNewTodo(values);
+      resetFields();
+      this.props.onHideModal();
     });
   };
 
-  addNewTodo = (name: string) => {
-    const todo = makeTodo(name);
+  addNewTodo = (values: any) => {
+    const { name, important, urgent } = values;
+    const tags = makeBuiltinTags({ important, urgent });
+    const todo = makeTodo({ name, tags });
     const { dispatch } = this.context as StoreType;
     dispatch(Actions.addTodo({ todo: todo }));
   };
 
   render() {
     const { getFieldDecorator, getFieldsError, getFieldError, isFieldTouched } = this.props.form;
-    const { name } = this.state;
+    const { visible, onHideModal } = this.props;
     const nameError = isFieldTouched("name") && getFieldError("name");
     return (
-      <Card bordered={false}>
-        <Form layout="inline" onSubmit={this.submitForm} style={{ marginTop: 8 }} hideRequiredMark>
-          <Form.Item validateStatus={nameError ? "error" : ""} help={nameError || ""}>
-            {getFieldDecorator("name", {
-              rules: [{ required: true, message: "请输入待办事项名称" }]
-            })(<Input autoComplete="off" placeholder="待办事项" />)}
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              onClick={this.submitForm}
-              style={{ marginLeft: "8px" }}
-              disabled={hasErrors(getFieldsError())}
-            >
-              添加
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
+      <Modal
+        destroyOnClose
+        title="新建待办事项"
+        visible={visible}
+        onOk={this.onOk}
+        onCancel={onHideModal}
+      >
+        <Form.Item validateStatus={nameError ? "error" : ""} help={nameError || ""}>
+          {getFieldDecorator("name", {
+            rules: [{ required: true, message: "请输入待办事项名称" }]
+          })(<Input autoComplete="off" placeholder="待办事项" />)}
+        </Form.Item>
+        <Form.Item>
+          {getFieldDecorator("important", { valuePropName: "checked", initialValue: false })(
+            <Checkbox>重要</Checkbox>
+          )}
+          {getFieldDecorator("urgent", { valuePropName: "checked", initialValue: false })(
+            <Checkbox>紧急</Checkbox>
+          )}
+        </Form.Item>
+      </Modal>
     );
   }
 }
 
-export const TodoForm = Form.create({})(RawTodoForm);
+export const CreateTodoForm = Form.create<CreateTodoFormProps>({})(CreateForm);
+
+export interface UpdateTodoFormProps extends FormComponentProps {
+  todo: Todo;
+  visible: boolean;
+  onHideModal: () => void;
+}
+
+class UpdateForm extends Component<UpdateTodoFormProps> {
+  static contextType = StoreContext;
+  componentDidMount() {
+    // 开始时禁用提交按钮
+    this.props.form.validateFields();
+  }
+
+  onOk = () => {
+    const { validateFields, resetFields } = this.props.form;
+    validateFields((err, values) => {
+      if (err) {
+        console.error("表单验证错误");
+        return;
+      }
+      console.info("表单值:", values);
+      this.updateTodo(values);
+      resetFields();
+      this.props.onHideModal();
+    });
+  };
+
+  updateTodo = (values: any) => {
+    const { name, important, urgent } = values;
+    const tags = makeBuiltinTags({ important, urgent });
+    const newTodo = makeTodo({ name, tags });
+    const { dispatch } = this.context as StoreType;
+    dispatch(Actions.updateTodo({ newTodo, todo: this.props.todo }));
+  };
+
+  render() {
+    const { getFieldDecorator, getFieldsError, getFieldError, isFieldTouched } = this.props.form;
+    const { visible, onHideModal } = this.props;
+    const nameError = isFieldTouched("name") && getFieldError("name");
+    const todox = new TodoX(this.props.todo);
+    return (
+      <Modal
+        destroyOnClose
+        title="编辑待办事项"
+        visible={visible}
+        onOk={this.onOk}
+        onCancel={onHideModal}
+      >
+        <Form.Item validateStatus={nameError ? "error" : ""} help={nameError || ""}>
+          {getFieldDecorator("name", {
+            rules: [{ required: true, message: "请输入待办事项名称" }],
+            initialValue: todox.todo.name
+          })(<Input autoComplete="off" placeholder="待办事项" />)}
+        </Form.Item>
+        <Form.Item validateStatus="" help="">
+          {getFieldDecorator("important", {
+            valuePropName: "checked",
+            initialValue: todox.isImportant
+          })(<Checkbox>重要</Checkbox>)}
+          {getFieldDecorator("urgent", { valuePropName: "checked", initialValue: todox.isUrgent })(
+            <Checkbox>紧急</Checkbox>
+          )}
+        </Form.Item>
+      </Modal>
+    );
+  }
+}
+
+export const UpdateTodoForm = Form.create<UpdateTodoFormProps>({})(UpdateForm);

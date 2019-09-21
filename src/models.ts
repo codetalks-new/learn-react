@@ -61,11 +61,11 @@ export const statusToButtonProps = (status: Status): BaseButtonProps => {
     case Status.DELETED:
       return { type: "danger", shape: "circle", icon: "delete" };
     case Status.FINISHED:
-      return { type: "primary", shape: "circle", icon: "check-circle" };
+      return { type: "primary", shape: "circle", icon: "check" };
     case Status.PAUSE:
-      return { type: "dashed", shape: "circle", icon: "pause-circle" };
+      return { type: "dashed", shape: "circle", icon: "pause" };
     case Status.DOING:
-      return { type: "primary", shape: "circle", icon: "play-circle" };
+      return { type: "default", shape: "circle", icon: "caret-right" };
     default:
       return { type: "default", shape: "circle" };
   }
@@ -84,13 +84,29 @@ export interface Todo {
   phases: Phase[];
 }
 
-export const makeTodo = (name: string, tags: string[] = [], phases: Phase[] = []): Todo => {
-  let phases_fallback = phases.length > 0 ? phases : [{ from: new Date(), status: Status.CREATED }];
-  return {
-    name,
-    tags,
-    phases: phases_fallback
-  };
+export const makeBuiltinTags = ({
+  important = false,
+  urgent = false
+}: {
+  important?: boolean;
+  urgent?: boolean;
+}) => [
+  important ? BuiltinTag.IMPORTANT : BuiltinTag.NOTIMPORTANT,
+  urgent ? BuiltinTag.URGENT : BuiltinTag.NOTURGENT
+];
+
+export const makeTodo = ({
+  name,
+  tags = [],
+  phases = []
+}: {
+  name: string;
+  tags?: string[];
+  phases?: Phase[];
+}): Todo => {
+  phases = phases.length ? phases : [{ from: new Date(), status: Status.CREATED }];
+  tags = tags.length ? tags : makeBuiltinTags({});
+  return { name, tags, phases };
 };
 
 /**
@@ -121,5 +137,12 @@ export class TodoX {
 
   get currentAvailableActions() {
     return statusTransitionMap.get(this.currentStatus);
+  }
+
+  get isImportant() {
+    return this.todo.tags.includes(BuiltinTag.IMPORTANT);
+  }
+  get isUrgent() {
+    return this.todo.tags.includes(BuiltinTag.URGENT);
   }
 }

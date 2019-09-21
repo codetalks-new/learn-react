@@ -7,7 +7,8 @@ import {
   TodoObjectAction,
   TagAction,
   UpdateStatusAction,
-  TodoListAction
+  TodoListAction,
+  TodoUpdateAction
 } from "./actions";
 
 import { State, Reducer, createStore } from "./redux-lite";
@@ -40,7 +41,7 @@ const isLoadingReducer: TodoAppReducer<EmptyAction> = (state, action) => {
   return state;
 };
 const todoReducer: TodoAppReducer<
-  TodoObjectAction | TagAction | UpdateStatusAction | TodoListAction
+  TodoObjectAction | TagAction | UpdateStatusAction | TodoListAction | TodoUpdateAction
 > = (state, action) => {
   if (action.type === TodoActionType.LOAD_TODOS_SUCCESS) {
     return { ...state, todos: action.todos, isLoading: false };
@@ -50,6 +51,12 @@ const todoReducer: TodoAppReducer<
   switch (action.type) {
     case TodoActionType.ADD:
       todos.push(todo);
+      break;
+    case TodoActionType.UPDATE:
+      {
+        const index = todos.indexOf(todo);
+        todos[index] = action.newTodo;
+      }
       break;
     case TodoActionType.REMOVE:
       {

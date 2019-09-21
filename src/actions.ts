@@ -5,6 +5,7 @@ export enum TodoActionType {
   ADD_TAG = "add_tag",
   REMOVE_TAG = "remove_tag",
   ADD = "add",
+  UPDATE = "update",
   REMOVE = "remove",
   UPDATE_STATUS = "update_status",
   FILTER_BY_STATUS = "filter_by_status",
@@ -20,6 +21,12 @@ export interface EmptyAction extends Action {}
 export interface TodoObjectAction extends Action {
   type: TodoActionType.ADD | TodoActionType.REMOVE;
   todo: Todo;
+}
+
+export interface TodoUpdateAction extends Action {
+  type: TodoActionType.UPDATE;
+  todo: Todo;
+  newTodo: Todo;
 }
 
 export interface TodoListAction extends Action {
@@ -51,6 +58,7 @@ export type FilterByStatusActionCreator = ActionCreator<FilterByStatusAction>;
 
 export type TodoAction =
   | TodoObjectAction
+  | TodoUpdateAction
   | TagAction
   | UpdateStatusAction
   | FilterByStatusAction
@@ -66,6 +74,10 @@ export class Actions {
   static addTag: TagActionCreator = payload => ({ ...payload, type: TodoActionType.ADD_TAG });
   static removeTag: TagActionCreator = payload => ({ ...payload, type: TodoActionType.REMOVE_TAG });
   static addTodo: TodoObjectActionCreator = payload => ({ ...payload, type: TodoActionType.ADD });
+  static updateTodo: ActionCreator<TodoUpdateAction> = payload => ({
+    ...payload,
+    type: TodoActionType.UPDATE
+  });
   static removeTodo: TodoObjectActionCreator = payload => ({
     ...payload,
     type: TodoActionType.REMOVE

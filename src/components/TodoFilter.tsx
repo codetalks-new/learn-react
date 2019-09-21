@@ -5,7 +5,8 @@ import { StoreContext, StoreType } from "../store";
 import { Status } from "../models";
 
 import { Actions } from "../actions";
-import { Radio, Button } from "antd";
+import { Radio, Button, Row, Col } from "antd";
+import Text from "antd/lib/typography/Text";
 
 interface TodoFilterProps {
   filterStatus: Status | null | undefined;
@@ -34,19 +35,23 @@ export class TodoFilter extends Component<TodoFilterProps> {
     });
     const showAll = !filterStatus;
     return (
-      <div>
-        <h3>按状态筛选:</h3>
-        <Button.Group>
-          <Button
-            key="all"
-            onClick={() => filterByStatus(null)}
-            className={showAll ? "active" : ""}
-          >
-            所有
-          </Button>
-          {buttons}
-        </Button.Group>
-      </div>
+      <Row>
+        <Col span={4}>
+          <Text strong>按状态筛选:</Text>
+        </Col>
+        <Col>
+          <Button.Group>
+            <Button
+              key="all"
+              onClick={() => filterByStatus(null)}
+              className={showAll ? "active" : ""}
+            >
+              所有
+            </Button>
+            {buttons}
+          </Button.Group>
+        </Col>
+      </Row>
     );
   }
 }

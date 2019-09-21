@@ -2,6 +2,8 @@ import React from "react";
 import "./App.css";
 import { Layout } from "antd";
 import { TodoApp } from "./TodoApp";
+import Title from "antd/lib/typography/Title";
+import Text from "antd/lib/typography/Text";
 
 const { Header, Footer, Content } = Layout;
 
@@ -9,12 +11,16 @@ const App: React.FC = () => {
   return (
     <Layout>
       <Header>
-        <h1 className="header-title">
-          欢来到 <i>代码会说话</i> 的编程实验室
-        </h1>
+        <Title level={3} className="header-title">
+          欢迎来到
+          <Text code strong>
+            代码会说话
+          </Text>
+          的编程实验室
+        </Title>
       </Header>
       <Content>
-        <h2>[React &TypeScript](12) 集成 Ant Design 美化UI</h2>
+        <Title level={3}>[React &TypeScript](12) 集成 Ant Design 美化UI</Title>
         <TodoApp />
       </Content>
       <Footer>

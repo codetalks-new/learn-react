@@ -1,4 +1,5 @@
 @import "~antd/dist/antd.css";
-.header-title {
-  color: white;
+.header-title,
+.header-title .ant-typography {
+  color: white !important;
 }
