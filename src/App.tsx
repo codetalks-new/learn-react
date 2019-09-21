@@ -20,11 +20,12 @@ const App: React.FC = () => {
         </Title>
       </Header>
       <Content>
-        <Title level={3}>[React &TypeScript](12) 集成 Ant Design 美化UI</Title>
+        <Title level={3}>[React & TS](13) Ant Design 实战- 表单篇</Title>
         <TodoApp />
       </Content>
       <Footer>
         <footer> TS不仅帮你声明类型,还提供创建类型的助手 </footer>
+        <footer> CRUD 的自我修养</footer>
       </Footer>
     </Layout>
   );

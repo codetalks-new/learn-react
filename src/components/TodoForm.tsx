@@ -10,8 +10,6 @@ export interface CreateTodoFormProps extends FormComponentProps {
   onHideModal: () => void;
 }
 
-const hasErrors = (fieldErros: any) => Object.keys(fieldErros).some(key => fieldErros[key]);
-
 class CreateForm extends Component<CreateTodoFormProps> {
   static contextType = StoreContext;
   componentDidMount() {
