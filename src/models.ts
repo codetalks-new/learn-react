@@ -79,6 +79,7 @@ export interface Phase {
 // redux 可序列化,不可变性
 
 export interface Todo {
+  id: string;
   name: string;
   tags: string[];
   phases: Phase[];
@@ -95,6 +96,10 @@ export const makeBuiltinTags = ({
   urgent ? BuiltinTag.URGENT : BuiltinTag.NOTURGENT
 ];
 
+const makeTmpId = () => {
+  return Date.now() + "";
+};
+
 export const makeTodo = ({
   name,
   tags = [],
@@ -106,7 +111,8 @@ export const makeTodo = ({
 }): Todo => {
   phases = phases.length ? phases : [{ from: new Date(), status: Status.CREATED }];
   tags = tags.length ? tags : makeBuiltinTags({});
-  return { name, tags, phases };
+  const id = makeTmpId();
+  return { id, name, tags, phases };
 };
 
 /**
@@ -144,5 +150,25 @@ export class TodoX {
   }
   get isUrgent() {
     return this.todo.tags.includes(BuiltinTag.URGENT);
+  }
+
+  addTag(tag: string) {
+    if (!this.todo.tags.includes(tag)) {
+      this.todo.tags.push(tag);
+    }
+  }
+
+  removeTag(tag: string) {
+    const tagIndex = this.todo.tags.indexOf(tag);
+    if (tagIndex != -1) {
+      this.todo.tags.splice(tagIndex, 1);
+    }
+  }
+
+  updateStatus(status: Status) {
+    this.todo.phases.push({
+      from: new Date(),
+      status
+    });
   }
 }

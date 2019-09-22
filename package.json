@@ -11,7 +11,9 @@
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
     "react-scripts": "3.1.1",
+    "redux": "^4.0.4",
     "redux-saga": "^1.1.1",
+    "redux-thunk": "^2.3.0",
     "typescript": "3.6.2"
   },
   "scripts": {

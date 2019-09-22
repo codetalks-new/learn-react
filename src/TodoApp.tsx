@@ -68,7 +68,9 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
 
   componentDidMount() {
     this.unsubscribe = todoStore.subscribe(() => {
-      this.setState({ todos: todoStore.getState().todos });
+      const todos = todoStore.getState().todos;
+      console.info("todos changed ", todos);
+      this.setState({ todos });
     });
     // Vue#mounted isLoading
     // Redux-thunk  redux-saga yield generator
@@ -131,7 +133,7 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
         </Menu.Item>
         {moreActions.map(([title, targetStatus]) => (
           <Menu.Item key={targetStatus}>
-            <a href="#!" onClick={() => this.updateStatus(todo, targetStatus)}>
+            <a href="#!" onClick={() => this.updateStatus({ todo, targetStatus })}>
               {title}
             </a>
           </Menu.Item>
@@ -142,7 +144,7 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
       <Button
         key={title}
         {...statusToButtonProps(targetStatus)}
-        onClick={() => this.updateStatus(todo, targetStatus)}
+        onClick={() => this.updateStatus({ todo, targetStatus })}
       />
     ));
 
@@ -159,12 +161,17 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
     );
   };
 
-  updateStatus = (todo: Todo, targetStatus: Status) => {
+  updateStatus = ({ todo, targetStatus }: { todo: Todo; targetStatus: Status }) => {
     if (targetStatus === Status.DELETED) {
       this.confirmDelete(todo);
     } else {
-      todoStore.dispatch(Actions.updateStatus({ todo, targetStatus }));
+      this.doUpdateStatus({ todo, targetStatus });
     }
+  };
+
+  doUpdateStatus = ({ todo, targetStatus }: { todo: Todo; targetStatus: Status }) => {
+    new TodoX(todo).updateStatus(targetStatus);
+    todoStore.dispatch(Actions.updateTodoAsync(todo));
   };
 
   confirmDelete = (todo: Todo) => {
@@ -172,7 +179,7 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
       title: "确定要删除此办事项?",
       content: todo.name,
       onCancel() {},
-      onOk: () => todoStore.dispatch(Actions.updateStatus({ todo, targetStatus: Status.DELETED }))
+      onOk: () => this.doUpdateStatus({ todo, targetStatus: Status.DELETED })
     });
   };
 
@@ -203,8 +210,7 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
   };
 
   render() {
-    const state = todoStore.getState();
-    const { showCreateForm, showUpdateForm, currentUpdateTodo } = this.state;
+    const { showCreateForm, showUpdateForm, currentUpdateTodo, todos } = this.state;
     return (
       <div>
         <StoreContext.Provider value={todoStore}>
@@ -212,7 +218,7 @@ export class TodoApp extends Component<{}, TodoAppComponentState> {
             新建
           </Button>
           <ConnectedTodoFilter />
-          <Table dataSource={state.todos} columns={this.columns} rowKey="name" />
+          <Table dataSource={todos} columns={this.columns} rowKey="name" />
 
           <CreateTodoForm visible={showCreateForm} onHideModal={this.hideCreateForm} />
           {currentUpdateTodo && (

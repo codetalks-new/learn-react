@@ -36,7 +36,7 @@ class CreateForm extends Component<CreateTodoFormProps> {
     const tags = makeBuiltinTags({ important, urgent });
     const todo = makeTodo({ name, tags });
     const { dispatch } = this.context as StoreType;
-    dispatch(Actions.addTodo({ todo: todo }));
+    dispatch(Actions.addTodoAsync(todo));
   };
 
   render() {
@@ -101,9 +101,9 @@ class UpdateForm extends Component<UpdateTodoFormProps> {
   updateTodo = (values: any) => {
     const { name, important, urgent } = values;
     const tags = makeBuiltinTags({ important, urgent });
-    const newTodo = makeTodo({ name, tags });
+    const newTodo = { ...this.props.todo, ...makeTodo({ name, tags }) };
     const { dispatch } = this.context as StoreType;
-    dispatch(Actions.updateTodo({ newTodo, todo: this.props.todo }));
+    dispatch(Actions.updateTodoAsync(newTodo));
   };
 
   render() {
