@@ -48,8 +48,24 @@ const Navigation = () => (
           Users
         </NavLink>
       </li>
+      <li>
+        <NavLink to="/orders/desc" className="App-link">
+          Orders
+        </NavLink>
+      </li>
+      <li>
+        <NavLink to="/orders/abc" className="App-link">
+          Orders with abc direction
+        </NavLink>
+      </li>
     </ul>
   </nav>
+);
+
+const Orders = ({ match }: RouteComponentProps<{ direction: "asc" | "desc" }>) => (
+  <div>
+    <h3>只允许 asc/desc 作为参数 : {match.params.direction}</h3>
+  </div>
 );
 
 const App: React.FC = () => {
@@ -63,6 +79,7 @@ const App: React.FC = () => {
               <About />
             </Route>
             <Route path="/users" component={Users} />
+            <Route path="/orders/:direction(asc|desc)" component={Orders} />
             <Route path="/">
               <Home />
             </Route>
