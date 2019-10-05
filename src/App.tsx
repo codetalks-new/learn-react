@@ -1,7 +1,26 @@
 import React, { Component } from "react";
 import "./App.css";
 import { BrowserRouter as Router, Switch, Route, Link, NavLink } from "react-router-dom";
-import { RouteComponentProps, RouteProps, Redirect, withRouter } from "react-router";
+import { RouteComponentProps, RouteProps, Redirect, withRouter, RouteChildrenProps } from "react-router";
+
+interface MenuLinkProps {
+  label: string;
+  to: string;
+  activeOnlyWhenExact?: boolean;
+}
+
+const MenuLink = ({ label, to, activeOnlyWhenExact }: MenuLinkProps) => (
+  <Route
+    path={to}
+    exact={activeOnlyWhenExact}
+    children={({ match }: RouteChildrenProps) => (
+      <div className={match ? "active" : ""}>
+        {match ? ">" : ""}
+        <Link to={to}>{label}</Link>
+      </div>
+    )}
+  ></Route>
+);
 
 const Home = () => <h2>Home</h2>;
 const About = () => <h2>About</h2>;
@@ -15,10 +34,10 @@ const Users = ({ match }: RouteComponentProps) => (
     <h2>Users</h2>
     <ul>
       <li>
-        <Link to={`${match!.url}/jack`}>Jack Ma</Link>
+        <MenuLink to={`${match!.url}/jack`} activeOnlyWhenExact={true} label="Jack Ma" />
       </li>
       <li>
-        <Link to={`${match!.url}/pony`}>Pony Ma</Link>
+        <MenuLink to={`${match!.url}/pony`} label="Pony Ma" />
       </li>
     </ul>
     <Switch>
