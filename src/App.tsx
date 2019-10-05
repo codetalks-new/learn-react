@@ -1,7 +1,7 @@
-import React from "react";
+import React, { Component } from "react";
 import "./App.css";
 import { BrowserRouter as Router, Switch, Route, Link, NavLink } from "react-router-dom";
-import { RouteComponentProps } from "react-router";
+import { RouteComponentProps, RouteProps, Redirect, withRouter } from "react-router";
 
 const Home = () => <h2>Home</h2>;
 const About = () => <h2>About</h2>;
@@ -68,10 +68,87 @@ const Orders = ({ match }: RouteComponentProps<{ direction: "asc" | "desc" }>) =
   </div>
 );
 
+const fakeAuth = {
+  isAuthenticated: false,
+  authenticase(cb: Function) {
+    this.isAuthenticated = true;
+    setTimeout(cb, 100); //fake async
+  },
+  signout(cb: Function) {
+    this.isAuthenticated = false;
+    setTimeout(cb, 100);
+  }
+};
+
+interface LoginState {
+  redirectToReffer: boolean;
+}
+class Login extends Component<RouteComponentProps, LoginState> {
+  state = {
+    redirectToReffer: false
+  };
+
+  login = () => {
+    fakeAuth.authenticase(() => {
+      this.setState({ redirectToReffer: true });
+    });
+  };
+
+  render() {
+    const { from } = this.props.location.state || { from: { pathname: "/" } };
+    const { redirectToReffer } = this.state;
+    if (redirectToReffer) {
+      return <Redirect to={from} />;
+    }
+    return (
+      <div>
+        <p>你必须登录之后才能查看此页面 {from.pathname}</p>
+        <button onClick={this.login}>登录</button>
+      </div>
+    );
+  }
+}
+
+const PrivateRoute = ({ component, ...rest }: RouteProps) => {
+  console.info("component:", component);
+  return (
+    <Route
+      {...rest}
+      render={props => {
+        console.info("props:", props);
+        return fakeAuth.isAuthenticated ? (
+          <Component {...props} />
+        ) : (
+          <Redirect to={{ pathname: "/login", state: { from: props.location } }} />
+        );
+      }}
+    ></Route>
+  );
+};
+
+const RawAuthButton = ({ history }: RouteComponentProps) =>
+  fakeAuth.isAuthenticated ? (
+    <p>
+      欢迎来到 CodeTalks 的编程实验室
+      <button
+        onClick={() => {
+          fakeAuth.signout(() => history.push("/"));
+        }}
+      >
+        注销
+      </button>
+    </p>
+  ) : (
+    <p>你尚未登录!</p>
+  );
+
+const AuthButton = withRouter(RawAuthButton);
+
 const App: React.FC = () => {
   return (
     <Router>
       <div className="App">
+        <AuthButton />
         <Navigation />
         <main>
           <Switch>
@@ -79,7 +156,8 @@ const App: React.FC = () => {
               <About />
             </Route>
             <Route path="/users" component={Users} />
-            <Route path="/orders/:direction(asc|desc)" component={Orders} />
+            <PrivateRoute path="/orders/:direction(asc|desc)" component={Orders} />
+            <Route path="/login" component={Login} />
             <Route path="/">
               <Home />
             </Route>
