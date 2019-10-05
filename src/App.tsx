@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import "./App.css";
 import { BrowserRouter as Router, Switch, Route, Link, NavLink } from "react-router-dom";
-import { RouteComponentProps, RouteProps, Redirect, withRouter, RouteChildrenProps } from "react-router";
+import { RouteComponentProps, RouteProps, Redirect, withRouter, RouteChildrenProps, Prompt } from "react-router";
 
 interface MenuLinkProps {
   label: string;
@@ -238,4 +238,61 @@ const SideBarApp = () => {
   );
 };
 
-export default SideBarApp;
+interface FormState {
+  isBlocking: boolean;
+}
+class Form extends Component<{}, FormState> {
+  state = {
+    isBlocking: false
+  };
+
+  render() {
+    const { isBlocking } = this.state;
+    return (
+      <form
+        onSubmit={event => {
+          event.preventDefault();
+          (event.target as HTMLFormElement).reset();
+          this.setState({ isBlocking: false });
+        }}
+      >
+        <Prompt when={isBlocking} message={location => `编辑内容可能会丢失,确定要跳转到 ${location.pathname}吗?`} />
+        <p>阻塞中? {isBlocking ? "是的,点击链接或返回按钮试试" : "没"}</p>
+        <p>
+          <input
+            placeholder="输入任意内容以阻塞转场"
+            onChange={event => {
+              this.setState({ isBlocking: event.target.value.length > 0 });
+            }}
+          />
+        </p>
+        <p>
+          <button>提交以取消阻塞</button>
+        </p>
+      </form>
+    );
+  }
+}
+
+const PreventingTransitionsApp = () => (
+  <Router>
+    <div>
+      <ul>
+        <li>
+          <Link to="/">表单</Link>
+        </li>
+        <li>
+          <Link to="/one">链接1</Link>
+        </li>
+        <li>
+          <Link to="/two">链接2</Link>
+        </li>
+      </ul>
+      <Route path="/" exact component={Form} />
+      <Route path="/one" exact render={() => <h3>链接1</h3>} />
+      <Route path="/two" exact render={() => <h3>链接2</h3>} />
+    </div>
+  </Router>
+);
+
+export default PreventingTransitionsApp;
